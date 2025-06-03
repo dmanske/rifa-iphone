@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Trash2, CreditCard, Smartphone } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import Checkout from './Checkout';
+import CheckoutAuth from './CheckoutAuth';
 
 interface CartProps {
   onClose: () => void;
@@ -16,7 +15,7 @@ const Cart: React.FC<CartProps> = ({ onClose }) => {
   const cardTotal = getTotalWithFee(5); // 5% fee for credit card
 
   if (showCheckout) {
-    return <Checkout onBack={() => setShowCheckout(false)} onClose={onClose} />;
+    return <CheckoutAuth onBack={() => setShowCheckout(false)} onClose={onClose} />;
   }
 
   if (cartItems.length === 0) {
