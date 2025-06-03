@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Smartphone, Trophy, Users, Shield, Star, ChevronRight, LogIn, Settings } from 'lucide-react';
 import NumberSelection from '../components/NumberSelection';
@@ -16,12 +15,29 @@ const IndexContent: React.FC = () => {
     setCurrentView(view);
   };
 
+  const handleAuthRequired = () => {
+    setCurrentView('auth');
+  };
+
+  const handleNumbersAccess = () => {
+    if (!user) {
+      handleAuthRequired();
+      return;
+    }
+    setCurrentView('numbers');
+  };
+
   if (currentView === 'auth') {
     return <Auth onBack={() => setCurrentView('home')} />;
   }
 
   if (currentView === 'numbers') {
-    return <NumberSelection onBack={() => setCurrentView('home')} />;
+    return (
+      <NumberSelection 
+        onBack={() => setCurrentView('home')} 
+        onAuthRequired={handleAuthRequired}
+      />
+    );
   }
 
   if (currentView === 'admin') {
@@ -99,7 +115,7 @@ const IndexContent: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <button
-              onClick={() => handleViewChange('numbers')}
+              onClick={handleNumbersAccess}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 hover:scale-105 shadow-lg flex items-center justify-center space-x-2"
             >
               <span>Escolher Números</span>
@@ -189,8 +205,8 @@ const IndexContent: React.FC = () => {
                 1
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Escolha seus números</h3>
-                <p className="text-gray-600">Selecione de 1 a 10 números da sorte entre 001 e 130. Cada número custa R$ 100,00.</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Faça login ou crie sua conta</h3>
+                <p className="text-gray-600">Cadastre-se gratuitamente ou faça login para acessar os números disponíveis.</p>
               </div>
             </div>
 
@@ -199,8 +215,8 @@ const IndexContent: React.FC = () => {
                 2
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Faça o pagamento</h3>
-                <p className="text-gray-600">Pague via Pix (sem taxa) ou cartão de crédito (taxa de 5%). Pagamento 100% seguro.</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Escolha seus números</h3>
+                <p className="text-gray-600">Selecione de 1 a 10 números da sorte entre 001 e 130. Cada número custa R$ 100,00.</p>
               </div>
             </div>
 
@@ -209,8 +225,8 @@ const IndexContent: React.FC = () => {
                 3
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Aguarde o sorteio</h3>
-                <p className="text-gray-600">O sorteio será realizado quando todos os números forem vendidos ou na data limite estipulada.</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Faça o pagamento</h3>
+                <p className="text-gray-600">Pague via Pix (sem taxa) ou cartão de crédito (taxa de 5%). Pagamento 100% seguro.</p>
               </div>
             </div>
 
@@ -239,7 +255,7 @@ const IndexContent: React.FC = () => {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
-              onClick={() => handleViewChange('numbers')}
+              onClick={handleNumbersAccess}
               className="bg-white hover:bg-gray-100 text-gray-900 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 hover:scale-105 shadow-lg"
             >
               Participar Agora

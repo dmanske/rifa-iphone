@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CreditCard, Smartphone, Mail, User, Phone, CheckCircle, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../hooks/useAuth';
@@ -19,14 +18,26 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
+    name: user?.user_metadata?.full_name || '',
+    email: user?.email || '',
+    phone: user?.user_metadata?.phone || '',
     cardNumber: '',
     expiryDate: '',
     cvv: '',
     cardName: ''
   });
+
+  // Atualizar formData quando user mudar
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.user_metadata?.full_name || prev.name,
+        email: user.email || prev.email,
+        phone: user.user_metadata?.phone || prev.phone
+      }));
+    }
+  }, [user]);
 
   const pixTotal = getTotalPrice();
   const cardTotal = getTotalWithFee(5);
@@ -51,23 +62,42 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
       return;
     }
 
+    if (!formData.name.trim()) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Por favor, informe seu nome completo",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      toast({
+        title: "E-mail obrigatório",
+        description: "Por favor, informe seu e-mail",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
       // Simular processamento de pagamento
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Salvar compra no banco de dados
+      // Salvar compra no banco de dados com user_id
       const { error } = await supabase
         .from('purchases')
         .insert({
-          user_id: user.id,
+          user_id: user.id, // Garantir que o user_id seja sempre incluído
           full_name: formData.name,
           email: formData.email,
           phone: formData.phone || null,
           numbers: cartItems.map(item => item.number),
           total_amount: finalTotal,
-          payment_method: paymentMethod
+          payment_method: paymentMethod,
+          status: paymentMethod === 'pix' ? 'completed' : 'confirmed' // Pix precisa confirmação manual
         });
 
       if (error) {
@@ -83,7 +113,9 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
       setIsSuccess(true);
       toast({
         title: "Compra realizada com sucesso!",
-        description: "Seus números foram reservados e você receberá um email de confirmação."
+        description: paymentMethod === 'pix' 
+          ? "Seus números foram reservados. Aguarde a confirmação do pagamento Pix."
+          : "Seus números foram confirmados e você receberá um email de confirmação em breve."
       });
 
       // Limpar carrinho após sucesso
@@ -104,25 +136,55 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
     }
   };
 
+  // Verificar se o usuário está logado
+  if (!user) {
+    return (
+      <div className="p-8 text-center">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <LogIn className="w-8 h-8 text-red-600" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">Login Necessário</h3>
+        <p className="text-gray-600 mb-6">
+          Você precisa estar logado para finalizar a compra.
+        </p>
+        <button
+          onClick={onBack}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
+        >
+          Fazer Login
+        </button>
+      </div>
+    );
+  }
+
   if (isSuccess) {
     return (
       <div className="p-8 text-center">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
-        <h3 className="text-xl font-bold text-gray-900 mb-2">Pagamento Confirmado!</h3>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">
+          {paymentMethod === 'pix' ? 'Reserva Confirmada!' : 'Pagamento Confirmado!'}
+        </h3>
         <p className="text-gray-600 mb-4">
-          Seus números foram reservados com sucesso. Você receberá um e-mail de confirmação em breve.
+          {paymentMethod === 'pix' 
+            ? 'Seus números foram reservados. O organizador confirmará seu pagamento Pix em breve.'
+            : 'Seus números foram confirmados com sucesso. Você receberá um e-mail de confirmação em breve.'
+          }
         </p>
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
           <div className="text-sm text-green-800">
             <div className="font-semibold mb-1">Números Adquiridos:</div>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 justify-center">
               {cartItems.map((item) => (
                 <span key={item.number} className="bg-green-200 px-2 py-1 rounded text-xs">
                   {item.number.toString().padStart(3, '0')}
                 </span>
               ))}
+            </div>
+            <div className="mt-2 pt-2 border-t border-green-200">
+              <div className="font-semibold">Valor Total: R$ {finalTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+              <div className="text-xs">Método: {paymentMethod === 'pix' ? 'Pix' : 'Cartão de Crédito'}</div>
             </div>
           </div>
         </div>
@@ -270,7 +332,7 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
           </div>
         </div>
 
-        {/* Card Details (shown only if card is selected) */}
+        {/* Card Details */}
         {paymentMethod === 'card' && (
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-900">Dados do Cartão</h3>
@@ -360,6 +422,11 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
               <span>Total</span>
               <span className="text-lg">R$ {finalTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
+            {paymentMethod === 'pix' && (
+              <div className="text-xs text-gray-600 bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">
+                <strong>Pagamento Pix:</strong> Após a confirmação, o organizador verificará seu pagamento e confirmará seus números.
+              </div>
+            )}
           </div>
         </div>
 
@@ -375,13 +442,15 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
               <span>Processando...</span>
             </>
           ) : (
-            <span>Confirmar Pagamento - R$ {finalTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span>
+              {paymentMethod === 'pix' ? 'Confirmar Reserva' : 'Confirmar Pagamento'} - R$ {finalTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>
           )}
         </button>
       </form>
 
       <div className="mt-4 text-xs text-gray-500 text-center">
-        ✓ Pagamento seguro e criptografado • ✓ Confirmação por e-mail
+        ✓ Dados seguros e criptografados • ✓ Confirmação por e-mail
       </div>
     </div>
   );

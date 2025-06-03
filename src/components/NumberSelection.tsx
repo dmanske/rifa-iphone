@@ -1,31 +1,84 @@
 
-import React, { useState } from 'react';
-import { ArrowLeft, ShoppingCart, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, ShoppingCart, X, LogIn } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../hooks/useAuth';
 import Cart from './Cart';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NumberSelectionProps {
   onBack: () => void;
+  onAuthRequired: () => void;
 }
 
-const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack }) => {
+const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequired }) => {
   const { cartItems, addToCart, removeFromCart } = useCart();
+  const { user } = useAuth();
   const [showCart, setShowCart] = useState(false);
-  
-  // Simular números já vendidos (você pode integrar com Supabase depois)
-  const soldNumbers = [1, 5, 12, 23, 34, 45, 67, 89, 100, 115];
+  const [soldNumbers, setSoldNumbers] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSoldNumbers();
+  }, []);
+
+  const fetchSoldNumbers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('purchases')
+        .select('numbers')
+        .eq('status', 'confirmed');
+
+      if (error) {
+        console.error('Erro ao buscar números vendidos:', error);
+        return;
+      }
+
+      const allSoldNumbers: number[] = [];
+      data?.forEach(purchase => {
+        if (purchase.numbers) {
+          allSoldNumbers.push(...purchase.numbers);
+        }
+      });
+
+      setSoldNumbers(allSoldNumbers);
+    } catch (error) {
+      console.error('Erro inesperado:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const isNumberSold = (number: number) => soldNumbers.includes(number);
   const isNumberInCart = (number: number) => cartItems.some(item => item.number === number);
 
   const handleNumberClick = (number: number) => {
+    // Verificar se o usuário está logado antes de permitir seleção
+    if (!user) {
+      onAuthRequired();
+      return;
+    }
+
     if (isNumberSold(number)) return;
     
     if (isNumberInCart(number)) {
       removeFromCart(number);
     } else {
+      // Limitar a 10 números por pessoa
+      if (cartItems.length >= 10) {
+        return;
+      }
       addToCart(number);
     }
+  };
+
+  const handleCartClick = () => {
+    // Verificar se o usuário está logado antes de abrir o carrinho
+    if (!user) {
+      onAuthRequired();
+      return;
+    }
+    setShowCart(true);
   };
 
   const getNumberButtonClass = (number: number) => {
@@ -35,8 +88,19 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack }) => {
     if (isNumberInCart(number)) {
       return 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105';
     }
-    return 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:scale-105';
+    return 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:scale-105 cursor-pointer';
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Carregando números...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -57,21 +121,56 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack }) => {
               </div>
             </div>
             
-            <button
-              onClick={() => setShowCart(true)}
-              className="relative bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 shadow-lg flex items-center space-x-2"
-            >
-              <ShoppingCart className="w-5 h-5" />
-              <span>Carrinho</span>
-              {cartItems.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                  {cartItems.length}
-                </span>
+            <div className="flex items-center space-x-4">
+              {!user && (
+                <button
+                  onClick={onAuthRequired}
+                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Fazer Login</span>
+                </button>
               )}
-            </button>
+              
+              <button
+                onClick={handleCartClick}
+                className="relative bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 shadow-lg flex items-center space-x-2"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                <span>Carrinho</span>
+                {cartItems.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                    {cartItems.length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Alerta de Login */}
+      {!user && (
+        <div className="bg-blue-50 border border-blue-200 mx-6 mt-6 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <LogIn className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="text-blue-800 font-medium">Login necessário</p>
+                <p className="text-blue-700 text-sm">
+                  Faça login ou crie uma conta para escolher seus números da sorte
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onAuthRequired}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              Entrar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Numbers Grid */}
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -101,7 +200,8 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack }) => {
               className={`
                 aspect-square rounded-xl border-2 font-semibold text-sm transition-all duration-200
                 ${getNumberButtonClass(number)}
-                ${!isNumberSold(number) ? 'hover:shadow-md' : ''}
+                ${!isNumberSold(number) && user ? 'hover:shadow-md' : ''}
+                ${!user ? 'opacity-50' : ''}
               `}
             >
               {number.toString().padStart(3, '0')}
@@ -133,7 +233,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack }) => {
       </div>
 
       {/* Cart Modal */}
-      {showCart && (
+      {showCart && user && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
