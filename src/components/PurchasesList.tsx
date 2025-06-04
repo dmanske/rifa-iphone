@@ -19,9 +19,9 @@ interface Purchase {
   telefone: string | null;
   numeros_comprados: number[];
   valor_pago: number;
-  metodo_pagamento: 'pix' | 'cartao';
+  metodo_pagamento: string; // Changed to string to match database type
   data_compra: string;
-  status_pagamento: 'pago' | 'pendente' | 'cancelado';
+  status_pagamento: string; // Changed to string to match database type
 }
 
 const PurchasesList: React.FC = () => {
@@ -60,7 +60,7 @@ const PurchasesList: React.FC = () => {
     }
   };
 
-  const updatePaymentStatus = async (purchaseId: string, newStatus: 'pago' | 'pendente' | 'cancelado') => {
+  const updatePaymentStatus = async (purchaseId: string, newStatus: string) => {
     try {
       const { error } = await supabase
         .from('raffle_purchases')
