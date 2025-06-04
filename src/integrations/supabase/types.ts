@@ -72,6 +72,54 @@ export type Database = {
         }
         Relationships: []
       }
+      raffle_purchases: {
+        Row: {
+          created_at: string
+          data_compra: string
+          email: string
+          id: string
+          metodo_pagamento: string
+          nome: string
+          numeros_comprados: number[]
+          status_pagamento: string
+          stripe_session_id: string | null
+          telefone: string | null
+          updated_at: string
+          user_id: string
+          valor_pago: number
+        }
+        Insert: {
+          created_at?: string
+          data_compra?: string
+          email: string
+          id?: string
+          metodo_pagamento: string
+          nome: string
+          numeros_comprados: number[]
+          status_pagamento?: string
+          stripe_session_id?: string | null
+          telefone?: string | null
+          updated_at?: string
+          user_id: string
+          valor_pago: number
+        }
+        Update: {
+          created_at?: string
+          data_compra?: string
+          email?: string
+          id?: string
+          metodo_pagamento?: string
+          nome?: string
+          numeros_comprados?: number[]
+          status_pagamento?: string
+          stripe_session_id?: string | null
+          telefone?: string | null
+          updated_at?: string
+          user_id?: string
+          valor_pago?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

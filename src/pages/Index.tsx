@@ -3,15 +3,24 @@ import { Smartphone, Trophy, Users, Shield, Star, ChevronRight, LogIn, Settings 
 import NumberSelection from '../components/NumberSelection';
 import AdminPanel from '../components/AdminPanel';
 import OrganizerPanel from '../components/OrganizerPanel';
+import PaymentSuccess from '../components/PaymentSuccess';
 import Auth from '../components/Auth';
 import { CartProvider } from '../context/CartContext';
 import { AuthProvider, useAuth } from '../hooks/useAuth';
 
 const IndexContent: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'home' | 'numbers' | 'admin' | 'organizer' | 'auth'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'numbers' | 'admin' | 'organizer' | 'auth' | 'success'>('home');
   const { user, signOut, isOrganizer } = useAuth();
 
-  const handleViewChange = (view: 'home' | 'numbers' | 'admin' | 'organizer' | 'auth') => {
+  // Check for success page on load
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('session_id')) {
+      setCurrentView('success');
+    }
+  }, []);
+
+  const handleViewChange = (view: 'home' | 'numbers' | 'admin' | 'organizer' | 'auth' | 'success') => {
     setCurrentView(view);
   };
 
@@ -27,8 +36,18 @@ const IndexContent: React.FC = () => {
     setCurrentView('numbers');
   };
 
+  const handleGoHome = () => {
+    // Clear URL parameters and go home
+    window.history.replaceState({}, document.title, "/");
+    setCurrentView('home');
+  };
+
   if (currentView === 'auth') {
     return <Auth onBack={() => setCurrentView('home')} />;
+  }
+
+  if (currentView === 'success') {
+    return <PaymentSuccess onGoHome={handleGoHome} />;
   }
 
   if (currentView === 'numbers') {

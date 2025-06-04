@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CreditCard, Smartphone, Mail, User, Phone, CheckCircle, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -14,20 +15,14 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
   const { cartItems, getTotalPrice, getTotalWithFee, clearCart } = useCart();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card'>('pix');
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao'>('pix');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.user_metadata?.full_name || '',
     email: user?.email || '',
     phone: user?.user_metadata?.phone || '',
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
-    cardName: ''
   });
 
-  // Atualizar formData quando user mudar
   useEffect(() => {
     if (user) {
       setFormData(prev => ({
@@ -83,52 +78,34 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
     setIsProcessing(true);
 
     try {
-      // Simular processamento de pagamento
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Salvar compra no banco de dados com user_id
-      const { error } = await supabase
-        .from('purchases')
-        .insert({
-          user_id: user.id, // Garantir que o user_id seja sempre incluído
-          full_name: formData.name,
+      // Criar sessão de checkout no Stripe
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          numeros: cartItems.map(item => item.number),
+          metodo_pagamento: paymentMethod,
+          nome: formData.name,
           email: formData.email,
-          phone: formData.phone || null,
-          numbers: cartItems.map(item => item.number),
-          total_amount: finalTotal,
-          payment_method: paymentMethod,
-          status: paymentMethod === 'pix' ? 'completed' : 'confirmed' // Pix precisa confirmação manual
-        });
-
-      if (error) {
-        console.error('Erro ao salvar compra:', error);
-        toast({
-          title: "Erro ao processar compra",
-          description: "Houve um problema ao salvar sua compra. Tente novamente.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setIsSuccess(true);
-      toast({
-        title: "Compra realizada com sucesso!",
-        description: paymentMethod === 'pix' 
-          ? "Seus números foram reservados. Aguarde a confirmação do pagamento Pix."
-          : "Seus números foram confirmados e você receberá um email de confirmação em breve."
+          telefone: formData.phone,
+        }
       });
 
-      // Limpar carrinho após sucesso
-      setTimeout(() => {
-        clearCart();
-        onClose();
-      }, 3000);
+      if (error) {
+        console.error('Erro na função:', error);
+        throw new Error(error.message || 'Erro ao processar pagamento');
+      }
+
+      if (!data.url) {
+        throw new Error('URL de pagamento não recebida');
+      }
+
+      // Redirecionar para o Stripe Checkout
+      window.location.href = data.url;
 
     } catch (error) {
       console.error('Erro no checkout:', error);
       toast({
         title: "Erro no processamento",
-        description: "Houve um problema ao processar seu pagamento. Tente novamente.",
+        description: error instanceof Error ? error.message : "Houve um problema ao processar seu pagamento. Tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -136,12 +113,11 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
     }
   };
 
-  // Verificar se o usuário está logado
   if (!user) {
     return (
       <div className="p-8 text-center">
         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <LogIn className="w-8 h-8 text-red-600" />
+          <User className="w-8 h-8 text-red-600" />
         </div>
         <h3 className="text-xl font-bold text-gray-900 mb-2">Login Necessário</h3>
         <p className="text-gray-600 mb-6">
@@ -153,44 +129,6 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
         >
           Fazer Login
         </button>
-      </div>
-    );
-  }
-
-  if (isSuccess) {
-    return (
-      <div className="p-8 text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle className="w-8 h-8 text-green-600" />
-        </div>
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
-          {paymentMethod === 'pix' ? 'Reserva Confirmada!' : 'Pagamento Confirmado!'}
-        </h3>
-        <p className="text-gray-600 mb-4">
-          {paymentMethod === 'pix' 
-            ? 'Seus números foram reservados. O organizador confirmará seu pagamento Pix em breve.'
-            : 'Seus números foram confirmados com sucesso. Você receberá um e-mail de confirmação em breve.'
-          }
-        </p>
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-          <div className="text-sm text-green-800">
-            <div className="font-semibold mb-1">Números Adquiridos:</div>
-            <div className="flex flex-wrap gap-1 justify-center">
-              {cartItems.map((item) => (
-                <span key={item.number} className="bg-green-200 px-2 py-1 rounded text-xs">
-                  {item.number.toString().padStart(3, '0')}
-                </span>
-              ))}
-            </div>
-            <div className="mt-2 pt-2 border-t border-green-200">
-              <div className="font-semibold">Valor Total: R$ {finalTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-              <div className="text-xs">Método: {paymentMethod === 'pix' ? 'Pix' : 'Cartão de Crédito'}</div>
-            </div>
-          </div>
-        </div>
-        <p className="text-sm text-gray-500">
-          Esta janela será fechada automaticamente...
-        </p>
       </div>
     );
   }
@@ -303,14 +241,14 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
 
             {/* Card Option */}
             <label className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
-              paymentMethod === 'card' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
+              paymentMethod === 'cartao' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
             }`}>
               <input
                 type="radio"
                 name="paymentMethod"
-                value="card"
-                checked={paymentMethod === 'card'}
-                onChange={(e) => setPaymentMethod(e.target.value as 'card')}
+                value="cartao"
+                checked={paymentMethod === 'cartao'}
+                onChange={(e) => setPaymentMethod(e.target.value as 'cartao')}
                 className="sr-only"
               />
               <div className="flex items-center justify-between">
@@ -332,78 +270,6 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
           </div>
         </div>
 
-        {/* Card Details */}
-        {paymentMethod === 'card' && (
-          <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900">Dados do Cartão</h3>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome no Cartão
-              </label>
-              <input
-                type="text"
-                name="cardName"
-                value={formData.cardName}
-                onChange={handleInputChange}
-                required={paymentMethod === 'card'}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Nome como aparece no cartão"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Número do Cartão
-              </label>
-              <input
-                type="text"
-                name="cardNumber"
-                value={formData.cardNumber}
-                onChange={handleInputChange}
-                required={paymentMethod === 'card'}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="0000 0000 0000 0000"
-                maxLength={19}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Validade
-                </label>
-                <input
-                  type="text"
-                  name="expiryDate"
-                  value={formData.expiryDate}
-                  onChange={handleInputChange}
-                  required={paymentMethod === 'card'}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="MM/AA"
-                  maxLength={5}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  CVV
-                </label>
-                <input
-                  type="text"
-                  name="cvv"
-                  value={formData.cvv}
-                  onChange={handleInputChange}
-                  required={paymentMethod === 'card'}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="123"
-                  maxLength={4}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Order Summary */}
         <div className="bg-gray-50 rounded-xl p-4 space-y-3">
           <h3 className="font-semibold text-gray-900">Resumo do Pedido</h3>
@@ -412,7 +278,7 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
               <span className="text-gray-600">{cartItems.length} números × R$ 100,00</span>
               <span className="text-gray-900">R$ {pixTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
-            {paymentMethod === 'card' && (
+            {paymentMethod === 'cartao' && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Taxa de processamento (5%)</span>
                 <span className="text-gray-900">R$ {(cardTotal - pixTotal).toFixed(2)}</span>
@@ -422,11 +288,6 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
               <span>Total</span>
               <span className="text-lg">R$ {finalTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
-            {paymentMethod === 'pix' && (
-              <div className="text-xs text-gray-600 bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">
-                <strong>Pagamento Pix:</strong> Após a confirmação, o organizador verificará seu pagamento e confirmará seus números.
-              </div>
-            )}
           </div>
         </div>
 
@@ -443,14 +304,14 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
             </>
           ) : (
             <span>
-              {paymentMethod === 'pix' ? 'Confirmar Reserva' : 'Confirmar Pagamento'} - R$ {finalTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              Pagar com {paymentMethod === 'pix' ? 'Pix' : 'Cartão'} - R$ {finalTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </span>
           )}
         </button>
       </form>
 
       <div className="mt-4 text-xs text-gray-500 text-center">
-        ✓ Dados seguros e criptografados • ✓ Confirmação por e-mail
+        ✓ Dados seguros e criptografados • ✓ Processamento via Stripe
       </div>
     </div>
   );
