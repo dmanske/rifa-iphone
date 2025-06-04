@@ -75,6 +75,9 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
+    // Obter a origem correta da requisição
+    const origin = req.headers.get("origin") || req.headers.get("referer")?.split('/').slice(0, 3).join('/') || "http://localhost:3000";
+
     // Criar sessão de checkout
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -90,8 +93,8 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get("origin")}/`,
+      success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/`,
       metadata: {
         user_id: user.id,
         numeros: JSON.stringify(numeros),
@@ -103,6 +106,7 @@ serve(async (req) => {
     });
 
     console.log("Sessão criada:", session.id);
+    console.log("Success URL:", `${origin}/success?session_id={CHECKOUT_SESSION_ID}`);
 
     return new Response(JSON.stringify({ 
       url: session.url,

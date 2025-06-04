@@ -15,7 +15,10 @@ const IndexContent: React.FC = () => {
   // Check for success page on load
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('session_id')) {
+    const path = window.location.pathname;
+    
+    // Verificar se está na rota de sucesso ou tem session_id
+    if (path === '/success' || urlParams.get('session_id')) {
       setCurrentView('success');
     }
   }, []);
