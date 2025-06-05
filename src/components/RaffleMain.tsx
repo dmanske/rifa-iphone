@@ -80,12 +80,20 @@ const RaffleMain: React.FC<RaffleMainProps> = ({ onShowAuth }) => {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={onShowAuth}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                >
-                  Login / Cadastro
-                </button>
+                <div className="flex items-center space-x-3">
+                  <a
+                    href="/?admin=true"
+                    className="text-sm text-gray-500 hover:text-gray-700 underline"
+                  >
+                    Admin
+                  </a>
+                  <button
+                    onClick={onShowAuth}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    Login / Cadastro
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -193,6 +201,14 @@ const RaffleMain: React.FC<RaffleMainProps> = ({ onShowAuth }) => {
             {/* Prize Info */}
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl shadow-lg p-6">
               <h4 className="font-bold mb-4">Prêmio</h4>
+              
+              {/* Espaço para foto do iPhone */}
+              <div className="bg-white bg-opacity-20 rounded-xl p-4 mb-4">
+                <div className="aspect-square bg-white bg-opacity-30 rounded-lg flex items-center justify-center">
+                  <span className="text-sm opacity-75">Foto do iPhone 16 Pro Max</span>
+                </div>
+              </div>
+              
               <div className="space-y-2 text-sm">
                 <p><strong>iPhone 16 Pro Max</strong></p>
                 <p>• 256GB de armazenamento</p>

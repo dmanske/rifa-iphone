@@ -23,8 +23,13 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
         const sessionId = urlParams.get('session_id');
 
         if (!sessionId) {
-          throw new Error('Session ID não encontrado');
+          console.log('No session_id found, redirecting to home');
+          setIsConfirming(false);
+          onGoHome();
+          return;
         }
+
+        console.log('Confirming payment with session_id:', sessionId);
 
         // Confirmar pagamento
         const { data, error } = await supabase.functions.invoke('confirm-payment', {
@@ -32,16 +37,23 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
         });
 
         if (error) {
+          console.error('Error confirming payment:', error);
           throw new Error(error.message);
         }
 
-        setPurchaseData(data.purchase);
-        clearCart();
-        
-        toast({
-          title: "Pagamento confirmado!",
-          description: "Seus números foram reservados com sucesso.",
-        });
+        console.log('Payment confirmed successfully:', data);
+
+        if (data?.purchase) {
+          setPurchaseData(data.purchase);
+          clearCart();
+          
+          toast({
+            title: "Pagamento confirmado!",
+            description: "Seus números foram reservados com sucesso.",
+          });
+        } else {
+          throw new Error('Dados da compra não encontrados');
+        }
 
       } catch (error) {
         console.error('Erro ao confirmar pagamento:', error);
@@ -50,13 +62,14 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
           description: "Houve um problema ao confirmar seu pagamento. Entre em contato conosco.",
           variant: "destructive"
         });
+        // Não redirecionar automaticamente em caso de erro
       } finally {
         setIsConfirming(false);
       }
     };
 
     confirmPayment();
-  }, [clearCart, toast]);
+  }, [clearCart, toast, onGoHome]);
 
   if (isConfirming) {
     return (
@@ -94,14 +107,14 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
             <h3 className="font-semibold text-green-800 mb-2">Detalhes da Compra:</h3>
             <div className="text-sm text-green-700 space-y-1">
               <div>
-                <strong>Números:</strong> {purchaseData.numeros.map((n: number) => 
+                <strong>Números:</strong> {purchaseData.numeros?.map((n: number) => 
                   n.toString().padStart(3, '0')
-                ).join(', ')}
+                ).join(', ') || 'N/A'}
               </div>
               <div>
-                <strong>Valor Pago:</strong> R$ {purchaseData.valor_pago.toLocaleString('pt-BR', { 
+                <strong>Valor Pago:</strong> R$ {purchaseData.valor_pago?.toLocaleString('pt-BR', { 
                   minimumFractionDigits: 2 
-                })}
+                }) || '0,00'}
               </div>
               <div>
                 <strong>Método:</strong> {purchaseData.metodo_pagamento === 'pix' ? 'Pix' : 'Cartão de Crédito'}
@@ -109,6 +122,21 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
             </div>
           </div>
         )}
+
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+          <h3 className="font-semibold text-blue-800 mb-2">Próximos Passos:</h3>
+          <p className="text-sm text-blue-700">
+            Entre no grupo do WhatsApp para acompanhar o sorteio e receber atualizações:
+          </p>
+          <a 
+            href="https://chat.whatsapp.com/LINK_DO_GRUPO" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-block mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            Entrar no Grupo WhatsApp
+          </a>
+        </div>
 
         <div className="space-y-3">
           <button

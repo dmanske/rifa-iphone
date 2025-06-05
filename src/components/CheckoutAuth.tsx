@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CreditCard, Smartphone, Mail, User, Phone, CheckCircle, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -21,6 +20,7 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
     name: user?.user_metadata?.full_name || '',
     email: user?.email || '',
     phone: user?.user_metadata?.phone || '',
+    whatsapp: '',
   });
 
   useEffect(() => {
@@ -75,6 +75,15 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
       return;
     }
 
+    if (!formData.whatsapp.trim()) {
+      toast({
+        title: "WhatsApp obrigatório",
+        description: "Por favor, informe seu WhatsApp para entrar no grupo",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -85,7 +94,7 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
           metodo_pagamento: paymentMethod,
           nome: formData.name,
           email: formData.email,
-          telefone: formData.phone,
+          telefone: formData.whatsapp,
         }
       });
 
@@ -174,17 +183,20 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Phone className="w-4 h-4 inline mr-2" />
-                Telefone/WhatsApp
-                <span className="text-gray-500 text-xs ml-1">(opcional)</span>
+                WhatsApp *
               </label>
               <input
                 type="tel"
-                name="phone"
-                value={formData.phone}
+                name="whatsapp"
+                value={formData.whatsapp}
                 onChange={handleInputChange}
+                required
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="(11) 99999-9999"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Será usado para adicionar você no grupo do sorteio
+              </p>
             </div>
           </div>
 
