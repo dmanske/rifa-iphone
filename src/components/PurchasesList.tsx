@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +20,7 @@ interface Purchase {
   valor_total: number;
   metodo_pagamento: string;
   data_transacao: string;
-  status: string;
+  status: 'pago' | 'pendente' | 'processando' | 'cancelado' | 'expirado';
 }
 
 const PurchasesList: React.FC = () => {
@@ -60,7 +59,7 @@ const PurchasesList: React.FC = () => {
     }
   };
 
-  const updatePaymentStatus = async (purchaseId: string, newStatus: string) => {
+  const updatePaymentStatus = async (purchaseId: string, newStatus: 'pago' | 'cancelado') => {
     try {
       const { error } = await supabase
         .from('transactions')
