@@ -43,57 +43,173 @@ serve(async (req) => {
     const numeros = JSON.parse(metadata.numeros);
     const valorPago = session.amount_total! / 100; // Converter de centavos para reais
 
-    // Verificar se a compra já foi registrada
-    const { data: existingPurchase } = await supabaseService
-      .from('raffle_purchases')
-      .select('id')
+    // Verificar se o pagamento já foi processado
+    const { data: existingTransaction } = await supabaseService
+      .from('transactions')
+      .select('id, status, confirmacao_enviada')
       .eq('stripe_session_id', session_id)
       .single();
 
-    if (existingPurchase) {
+    if (existingTransaction) {
+      if (existingTransaction.status === 'pago' && existingTransaction.confirmacao_enviada) {
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: "Pagamento já processado",
+          purchase: {
+            numeros,
+            valor_pago: valorPago,
+            metodo_pagamento: metadata.metodo_pagamento,
+          }
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Usar transação atômica para evitar processamento duplo
+      const { error: updateError } = await supabaseService
+        .from('transactions')
+        .update({
+          status: 'pago',
+          data_pagamento: new Date().toISOString(),
+          confirmacao_enviada: true,
+          data_confirmacao: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingTransaction.id)
+        .eq('confirmacao_enviada', false); // Condição para evitar dupla atualização
+
+      if (updateError) {
+        console.error("Erro ao atualizar transação:", updateError);
+        throw new Error("Erro ao confirmar pagamento");
+      }
+
+      // Finalizar venda dos números
+      const { error: saleError } = await supabaseService.rpc('finalize_sale', {
+        _user_id: metadata.user_id,
+        _numeros: numeros,
+        _transaction_id: existingTransaction.id
+      });
+
+      if (saleError) {
+        console.error("Erro ao finalizar venda:", saleError);
+        throw new Error("Erro ao confirmar números vendidos");
+      }
+
+      // Log do pagamento processado
+      await supabaseService
+        .from('payment_logs')
+        .insert({
+          payment_id: session_id,
+          transaction_id: existingTransaction.id,
+          payload_raw: session,
+          fonte: 'stripe',
+          processado: true,
+        });
+
+      console.log("Pagamento confirmado para session:", session_id);
+      console.log("Números vendidos:", numeros);
+
       return new Response(JSON.stringify({ 
-        success: true, 
-        message: "Compra já registrada" 
+        success: true,
+        purchase: {
+          numeros,
+          valor_pago: valorPago,
+          metodo_pagamento: metadata.metodo_pagamento,
+        }
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } else {
+      // Criar nova transação se não existir
+      const { data: newTransaction, error: insertError } = await supabaseService
+        .from('transactions')
+        .insert({
+          user_id: metadata.user_id,
+          stripe_session_id: session_id,
+          payment_id: session_id,
+          numeros_comprados: numeros,
+          valor_total: valorPago,
+          metodo_pagamento: metadata.metodo_pagamento,
+          status: 'pago',
+          nome: metadata.nome,
+          email: metadata.email,
+          telefone: metadata.telefone || null,
+          data_pagamento: new Date().toISOString(),
+          confirmacao_enviada: true,
+          data_confirmacao: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+
+      if (insertError) {
+        console.error("Erro ao criar transação:", insertError);
+        throw new Error("Erro ao registrar pagamento");
+      }
+
+      // Finalizar venda dos números
+      const { error: saleError } = await supabaseService.rpc('finalize_sale', {
+        _user_id: metadata.user_id,
+        _numeros: numeros,
+        _transaction_id: newTransaction.id
+      });
+
+      if (saleError) {
+        console.error("Erro ao finalizar venda:", saleError);
+        throw new Error("Erro ao confirmar números vendidos");
+      }
+
+      // Log do pagamento processado
+      await supabaseService
+        .from('payment_logs')
+        .insert({
+          payment_id: session_id,
+          transaction_id: newTransaction.id,
+          payload_raw: session,
+          fonte: 'stripe',
+          processado: true,
+        });
+
+      console.log("Novo pagamento confirmado para session:", session_id);
+      console.log("Números vendidos:", numeros);
+
+      return new Response(JSON.stringify({ 
+        success: true,
+        purchase: {
+          numeros,
+          valor_pago: valorPago,
+          metodo_pagamento: metadata.metodo_pagamento,
+        }
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Registrar compra no banco
-    const { error: insertError } = await supabaseService
-      .from('raffle_purchases')
-      .insert({
-        user_id: metadata.user_id,
-        nome: metadata.nome,
-        email: metadata.email,
-        telefone: metadata.telefone || null,
-        numeros_comprados: numeros,
-        valor_pago: valorPago,
-        metodo_pagamento: metadata.metodo_pagamento,
-        status_pagamento: 'pago',
-        stripe_session_id: session_id,
-      });
-
-    if (insertError) {
-      console.error("Erro ao inserir compra:", insertError);
-      throw new Error("Erro ao registrar compra");
-    }
-
-    console.log("Compra registrada com sucesso para session:", session_id);
-
-    return new Response(JSON.stringify({ 
-      success: true,
-      purchase: {
-        numeros,
-        valor_pago: valorPago,
-        metodo_pagamento: metadata.metodo_pagamento,
-      }
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-
   } catch (error) {
     console.error("Erro ao confirmar pagamento:", error);
+    
+    // Log do erro
+    if (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
+      try {
+        const supabaseService = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+          { auth: { persistSession: false } }
+        );
+
+        await supabaseService
+          .from('payment_logs')
+          .insert({
+            payment_id: req.body?.session_id || 'unknown',
+            payload_raw: { error: error.message },
+            fonte: 'stripe',
+            processado: false,
+            erro: error.message,
+          });
+      } catch (logError) {
+        console.error("Erro ao registrar log:", logError);
+      }
+    }
+
     return new Response(JSON.stringify({ 
       error: error.message 
     }), {

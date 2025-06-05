@@ -46,6 +46,25 @@ serve(async (req) => {
       throw new Error("Método de pagamento inválido");
     }
 
+    // Verificar se os números estão reservados pelo usuário
+    const { data: reservedNumbers, error: checkError } = await supabaseClient
+      .from('raffle_numbers')
+      .select('numero, status, reserved_by')
+      .in('numero', numeros);
+
+    if (checkError) {
+      throw new Error("Erro ao verificar números");
+    }
+
+    // Validar se todos os números estão reservados pelo usuário
+    const invalidNumbers = reservedNumbers?.filter(n => 
+      n.status !== 'reservado' || n.reserved_by !== user.id
+    );
+
+    if (invalidNumbers && invalidNumbers.length > 0) {
+      throw new Error(`Números não reservados ou inválidos: ${invalidNumbers.map(n => n.numero).join(', ')}`);
+    }
+
     // Inicializar Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2023-10-16",
@@ -105,8 +124,39 @@ serve(async (req) => {
       },
     });
 
+    // Usar service role para criar transação
+    const supabaseService = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    // Criar registro da transação
+    const valorTotal = (quantidade * precoUnitario) / 100; // Converter para reais
+    
+    const { error: transactionError } = await supabaseService
+      .from('transactions')
+      .insert({
+        user_id: user.id,
+        stripe_session_id: session.id,
+        payment_id: session.id, // Usar session ID como payment ID inicial
+        numeros_comprados: numeros,
+        valor_total: valorTotal,
+        metodo_pagamento,
+        status: 'pendente',
+        nome,
+        email,
+        telefone: telefone || null,
+      });
+
+    if (transactionError) {
+      console.error("Erro ao criar transação:", transactionError);
+      // Não falhar o checkout por isso
+    }
+
     console.log("Sessão criada:", session.id);
     console.log("Success URL:", `${origin}/success?session_id={CHECKOUT_SESSION_ID}`);
+    console.log("Transação criada para números:", numeros);
 
     return new Response(JSON.stringify({ 
       url: session.url,

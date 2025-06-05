@@ -9,6 +9,110 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      access_logs: {
+        Row: {
+          error_message: string | null
+          id: string
+          ip_address: unknown | null
+          metodo_http: string
+          rota_acessada: string
+          success: boolean
+          timestamp: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          error_message?: string | null
+          id?: string
+          ip_address?: unknown | null
+          metodo_http: string
+          rota_acessada: string
+          success?: boolean
+          timestamp?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          error_message?: string | null
+          id?: string
+          ip_address?: unknown | null
+          metodo_http?: string
+          rota_acessada?: string
+          success?: boolean
+          timestamp?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      failed_login_attempts: {
+        Row: {
+          bloqueado_ate: string | null
+          email: string
+          id: string
+          ip_address: unknown
+          tentativas: number
+          ultima_tentativa: string
+        }
+        Insert: {
+          bloqueado_ate?: string | null
+          email: string
+          id?: string
+          ip_address: unknown
+          tentativas?: number
+          ultima_tentativa?: string
+        }
+        Update: {
+          bloqueado_ate?: string | null
+          email?: string
+          id?: string
+          ip_address?: unknown
+          tentativas?: number
+          ultima_tentativa?: string
+        }
+        Relationships: []
+      }
+      payment_logs: {
+        Row: {
+          data_recebimento: string
+          erro: string | null
+          fonte: string
+          id: string
+          payload_raw: Json
+          payment_id: string
+          processado: boolean
+          transaction_id: string | null
+        }
+        Insert: {
+          data_recebimento?: string
+          erro?: string | null
+          fonte: string
+          id?: string
+          payload_raw: Json
+          payment_id: string
+          processado?: boolean
+          transaction_id?: string | null
+        }
+        Update: {
+          data_recebimento?: string
+          erro?: string | null
+          fonte?: string
+          id?: string
+          payload_raw?: Json
+          payment_id?: string
+          processado?: boolean
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_logs_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -33,90 +137,105 @@ export type Database = {
         }
         Relationships: []
       }
-      purchases: {
+      raffle_numbers: {
         Row: {
-          email: string
-          full_name: string
+          created_at: string
           id: string
-          numbers: number[]
-          payment_method: string
-          phone: string | null
-          purchase_date: string
-          status: string
-          total_amount: number
-          user_id: string | null
+          numero: number
+          reservation_expires_at: string | null
+          reserved_at: string | null
+          reserved_by: string | null
+          sold_at: string | null
+          sold_to: string | null
+          status: Database["public"]["Enums"]["number_status"]
+          updated_at: string
         }
         Insert: {
-          email: string
-          full_name: string
+          created_at?: string
           id?: string
-          numbers: number[]
-          payment_method: string
-          phone?: string | null
-          purchase_date?: string
-          status?: string
-          total_amount: number
-          user_id?: string | null
+          numero: number
+          reservation_expires_at?: string | null
+          reserved_at?: string | null
+          reserved_by?: string | null
+          sold_at?: string | null
+          sold_to?: string | null
+          status?: Database["public"]["Enums"]["number_status"]
+          updated_at?: string
         }
         Update: {
-          email?: string
-          full_name?: string
+          created_at?: string
           id?: string
-          numbers?: number[]
-          payment_method?: string
-          phone?: string | null
-          purchase_date?: string
-          status?: string
-          total_amount?: number
-          user_id?: string | null
+          numero?: number
+          reservation_expires_at?: string | null
+          reserved_at?: string | null
+          reserved_by?: string | null
+          sold_at?: string | null
+          sold_to?: string | null
+          status?: Database["public"]["Enums"]["number_status"]
+          updated_at?: string
         }
         Relationships: []
       }
-      raffle_purchases: {
+      transactions: {
         Row: {
+          confirmacao_enviada: boolean
           created_at: string
-          data_compra: string
+          data_confirmacao: string | null
+          data_pagamento: string | null
+          data_transacao: string
           email: string
           id: string
           metodo_pagamento: string
           nome: string
           numeros_comprados: number[]
-          status_pagamento: string
+          payment_id: string | null
+          status: Database["public"]["Enums"]["payment_status"]
           stripe_session_id: string | null
           telefone: string | null
+          tentativas_pagamento: number
           updated_at: string
           user_id: string
-          valor_pago: number
+          valor_total: number
         }
         Insert: {
+          confirmacao_enviada?: boolean
           created_at?: string
-          data_compra?: string
+          data_confirmacao?: string | null
+          data_pagamento?: string | null
+          data_transacao?: string
           email: string
           id?: string
           metodo_pagamento: string
           nome: string
           numeros_comprados: number[]
-          status_pagamento?: string
+          payment_id?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
           stripe_session_id?: string | null
           telefone?: string | null
+          tentativas_pagamento?: number
           updated_at?: string
           user_id: string
-          valor_pago: number
+          valor_total: number
         }
         Update: {
+          confirmacao_enviada?: boolean
           created_at?: string
-          data_compra?: string
+          data_confirmacao?: string | null
+          data_pagamento?: string | null
+          data_transacao?: string
           email?: string
           id?: string
           metodo_pagamento?: string
           nome?: string
           numeros_comprados?: number[]
-          status_pagamento?: string
+          payment_id?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
           stripe_session_id?: string | null
           telefone?: string | null
+          tentativas_pagamento?: number
           updated_at?: string
           user_id?: string
-          valor_pago?: number
+          valor_total?: number
         }
         Relationships: []
       }
@@ -124,20 +243,20 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          role: string
-          user_id: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          role: string
-          user_id?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          role?: string
-          user_id?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -146,10 +265,56 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_reservations: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      finalize_sale: {
+        Args: { _user_id: string; _numeros: number[]; _transaction_id: string }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["user_role"]
+        }
+        Returns: boolean
+      }
+      log_access: {
+        Args: {
+          _user_id: string
+          _rota: string
+          _metodo: string
+          _ip?: unknown
+          _user_agent?: string
+          _success?: boolean
+          _error?: string
+        }
+        Returns: undefined
+      }
+      reserve_numbers: {
+        Args: {
+          _user_id: string
+          _numeros: number[]
+          _minutes_to_expire?: number
+        }
+        Returns: {
+          success: boolean
+          message: string
+          reserved_numbers: number[]
+          failed_numbers: number[]
+        }[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      number_status: "disponivel" | "reservado" | "vendido"
+      payment_status:
+        | "pendente"
+        | "processando"
+        | "pago"
+        | "cancelado"
+        | "expirado"
+      user_role: "user" | "organizer" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -264,6 +429,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      number_status: ["disponivel", "reservado", "vendido"],
+      payment_status: [
+        "pendente",
+        "processando",
+        "pago",
+        "cancelado",
+        "expirado",
+      ],
+      user_role: ["user", "organizer", "admin"],
+    },
   },
 } as const
