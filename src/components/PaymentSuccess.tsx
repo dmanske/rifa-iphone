@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, Download, Home, Loader2 } from 'lucide-react';
+import { CheckCircle, Download, Home, Loader2, MessageCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -125,17 +125,46 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
           <h3 className="font-semibold text-blue-800 mb-2">Próximos Passos:</h3>
-          <p className="text-sm text-blue-700">
+          <p className="text-sm text-blue-700 mb-3">
             Entre no grupo do WhatsApp para acompanhar o sorteio e receber atualizações:
           </p>
+          
+          {/* Espaço para o link do grupo WhatsApp */}
+          <div className="bg-white p-3 rounded-lg border-2 border-dashed border-blue-300 mb-3">
+            <p className="text-xs text-blue-600 mb-2">Link do Grupo WhatsApp:</p>
+            <p className="text-sm text-gray-500">
+              [Adicionar link do grupo aqui]
+            </p>
+          </div>
+          
           <a 
             href="https://chat.whatsapp.com/LINK_DO_GRUPO" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-block mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="inline-block w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             Entrar no Grupo WhatsApp
           </a>
+        </div>
+
+        {/* Botão de contato direto */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
+          <h3 className="font-semibold text-gray-800 mb-2">Precisa de Ajuda?</h3>
+          <p className="text-sm text-gray-600 mb-3">
+            Entre em contato direto comigo se tiver alguma dúvida:
+          </p>
+          <a 
+            href="https://wa.me/5511999999999?text=Olá,%20fiz%20uma%20compra%20na%20rifa%20do%20iPhone%20e%20preciso%20de%20ajuda"
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors space-x-2"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>Contato Direto WhatsApp</span>
+          </a>
+          <p className="text-xs text-gray-500 mt-2">
+            Clique para abrir o WhatsApp e falar comigo diretamente
+          </p>
         </div>
 
         <div className="space-y-3">

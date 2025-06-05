@@ -19,12 +19,23 @@ const Index = () => {
     // Verificar se está na rota de sucesso ou tem session_id
     if (path === '/success' || urlParams.get('session_id')) {
       setCurrentView('success');
+      // Limpar a URL depois de capturar o session_id para evitar loops
+      if (urlParams.get('session_id')) {
+        const newUrl = window.location.origin + '/success' + '?' + urlParams.toString();
+        window.history.replaceState({}, '', newUrl);
+      }
     } 
     // Verificar se está tentando acessar admin
     else if (urlParams.get('admin') === 'true') {
       setCurrentView('admin');
     }
   }, []);
+
+  const handleGoHome = () => {
+    setCurrentView('main');
+    // Limpar URL
+    window.history.replaceState({}, '', '/');
+  };
 
   const renderView = () => {
     switch (currentView) {
@@ -33,7 +44,7 @@ const Index = () => {
       case 'admin':
         return <Auth onBack={() => setCurrentView('main')} />;
       case 'success':
-        return <PaymentSuccess onGoHome={() => setCurrentView('main')} />;
+        return <PaymentSuccess onGoHome={handleGoHome} />;
       default:
         return <RaffleMain onShowAuth={() => setCurrentView('auth')} />;
     }

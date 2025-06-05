@@ -46,6 +46,22 @@ serve(async (req) => {
       throw new Error("Método de pagamento inválido");
     }
 
+    // Verificar se algum número já foi vendido ANTES de prosseguir
+    const { data: soldNumbers, error: soldCheckError } = await supabaseClient
+      .from('raffle_numbers')
+      .select('numero')
+      .in('numero', numeros)
+      .eq('status', 'vendido');
+
+    if (soldCheckError) {
+      throw new Error("Erro ao verificar números vendidos");
+    }
+
+    if (soldNumbers && soldNumbers.length > 0) {
+      const soldNumbersList = soldNumbers.map(n => n.numero).join(', ');
+      throw new Error(`Os seguintes números já foram vendidos: ${soldNumbersList}`);
+    }
+
     // Verificar se os números estão reservados pelo usuário
     const { data: reservedNumbers, error: checkError } = await supabaseClient
       .from('raffle_numbers')
