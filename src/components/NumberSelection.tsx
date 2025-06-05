@@ -25,9 +25,9 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
   const fetchSoldNumbers = async () => {
     try {
       const { data, error } = await supabase
-        .from('purchases')
-        .select('numbers')
-        .eq('status', 'confirmed');
+        .from('transactions')
+        .select('numeros_comprados')
+        .eq('status', 'pago');
 
       if (error) {
         console.error('Erro ao buscar números vendidos:', error);
@@ -35,9 +35,9 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
       }
 
       const allSoldNumbers: number[] = [];
-      data?.forEach(purchase => {
-        if (purchase.numbers) {
-          allSoldNumbers.push(...purchase.numbers);
+      data?.forEach(transaction => {
+        if (transaction.numeros_comprados) {
+          allSoldNumbers.push(...transaction.numeros_comprados);
         }
       });
 

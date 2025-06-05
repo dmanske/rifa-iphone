@@ -18,10 +18,10 @@ interface Purchase {
   email: string;
   telefone: string | null;
   numeros_comprados: number[];
-  valor_pago: number;
-  metodo_pagamento: string; // Changed to string to match database type
-  data_compra: string;
-  status_pagamento: string; // Changed to string to match database type
+  valor_total: number;
+  metodo_pagamento: string;
+  data_transacao: string;
+  status: string;
 }
 
 const PurchasesList: React.FC = () => {
@@ -33,9 +33,9 @@ const PurchasesList: React.FC = () => {
   const fetchPurchases = async () => {
     try {
       const { data, error } = await supabase
-        .from('raffle_purchases')
+        .from('transactions')
         .select('*')
-        .order('data_compra', { ascending: false });
+        .order('data_transacao', { ascending: false });
 
       if (error) {
         console.error('Erro ao buscar compras:', error);
@@ -63,8 +63,8 @@ const PurchasesList: React.FC = () => {
   const updatePaymentStatus = async (purchaseId: string, newStatus: string) => {
     try {
       const { error } = await supabase
-        .from('raffle_purchases')
-        .update({ status_pagamento: newStatus })
+        .from('transactions')
+        .update({ status: newStatus })
         .eq('id', purchaseId);
 
       if (error) {
@@ -74,7 +74,7 @@ const PurchasesList: React.FC = () => {
       setPurchases(prev => 
         prev.map(purchase => 
           purchase.id === purchaseId 
-            ? { ...purchase, status_pagamento: newStatus }
+            ? { ...purchase, status: newStatus }
             : purchase
         )
       );
@@ -96,9 +96,9 @@ const PurchasesList: React.FC = () => {
 
   const exportToCSV = () => {
     const csvContent = [
-      "Nome,Email,Telefone,Números,Valor Pago,Método,Status,Data",
+      "Nome,Email,Telefone,Números,Valor Total,Método,Status,Data",
       ...purchases.map(p => 
-        `"${p.nome}","${p.email}","${p.telefone || ''}","${p.numeros_comprados.join(', ')}","${p.valor_pago}","${p.metodo_pagamento}","${p.status_pagamento}","${new Date(p.data_compra).toLocaleString('pt-BR')}"`
+        `"${p.nome}","${p.email}","${p.telefone || ''}","${p.numeros_comprados.join(', ')}","${p.valor_total}","${p.metodo_pagamento}","${p.status}","${new Date(p.data_transacao).toLocaleString('pt-BR')}"`
       )
     ].join("\n");
 
@@ -118,13 +118,13 @@ const PurchasesList: React.FC = () => {
 
     // Configurar realtime updates
     const channel = supabase
-      .channel('raffle_purchases_changes')
+      .channel('transactions_changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'raffle_purchases'
+          table: 'transactions'
         },
         () => {
           fetchPurchases();
@@ -164,16 +164,16 @@ const PurchasesList: React.FC = () => {
   };
 
   const totalVendido = purchases
-    .filter(p => p.status_pagamento === 'pago')
-    .reduce((sum, p) => sum + p.valor_pago, 0);
+    .filter(p => p.status === 'pago')
+    .reduce((sum, p) => sum + Number(p.valor_total), 0);
 
   const totalPix = purchases
-    .filter(p => p.status_pagamento === 'pago' && p.metodo_pagamento === 'pix')
-    .reduce((sum, p) => sum + p.valor_pago, 0);
+    .filter(p => p.status === 'pago' && p.metodo_pagamento === 'pix')
+    .reduce((sum, p) => sum + Number(p.valor_total), 0);
 
   const totalCartao = purchases
-    .filter(p => p.status_pagamento === 'pago' && p.metodo_pagamento === 'cartao')
-    .reduce((sum, p) => sum + p.valor_pago, 0);
+    .filter(p => p.status === 'pago' && p.metodo_pagamento === 'cartao')
+    .reduce((sum, p) => sum + Number(p.valor_total), 0);
 
   if (loading) {
     return (
@@ -285,7 +285,7 @@ const PurchasesList: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">
-                      R$ {purchase.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {Number(purchase.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -299,19 +299,19 @@ const PurchasesList: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
-                      {getStatusIcon(purchase.status_pagamento)}
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(purchase.status_pagamento)}`}>
-                        {purchase.status_pagamento}
+                      {getStatusIcon(purchase.status)}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(purchase.status)}`}>
+                        {purchase.status}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm text-gray-900">
-                      {new Date(purchase.data_compra).toLocaleString('pt-BR')}
+                      {new Date(purchase.data_transacao).toLocaleString('pt-BR')}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {purchase.status_pagamento === 'pendente' && (
+                    {purchase.status === 'pendente' && (
                       <div className="flex gap-1">
                         <button
                           onClick={() => updatePaymentStatus(purchase.id, 'pago')}

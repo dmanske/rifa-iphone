@@ -23,11 +23,11 @@ const OrganizerPanel: React.FC<OrganizerPanelProps> = ({ onBack }) => {
 
   const fetchStats = async () => {
     try {
-      // Buscar compras confirmadas
-      const { data: purchases, error } = await supabase
-        .from('raffle_purchases')
-        .select('numeros_comprados, valor_pago, status_pagamento')
-        .eq('status_pagamento', 'pago');
+      // Buscar transações confirmadas
+      const { data: transactions, error } = await supabase
+        .from('transactions')
+        .select('numeros_comprados, valor_total, status')
+        .eq('status', 'pago');
 
       if (error) {
         console.error('Erro ao buscar estatísticas:', error);
@@ -37,11 +37,11 @@ const OrganizerPanel: React.FC<OrganizerPanelProps> = ({ onBack }) => {
       const allSoldNumbers: number[] = [];
       let revenue = 0;
 
-      purchases?.forEach(purchase => {
-        if (purchase.numeros_comprados) {
-          allSoldNumbers.push(...purchase.numeros_comprados);
+      transactions?.forEach(transaction => {
+        if (transaction.numeros_comprados) {
+          allSoldNumbers.push(...transaction.numeros_comprados);
         }
-        revenue += purchase.valor_pago;
+        revenue += Number(transaction.valor_total);
       });
 
       setSoldNumbers(allSoldNumbers);
