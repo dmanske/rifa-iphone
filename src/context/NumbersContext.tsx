@@ -159,8 +159,18 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setReservedNumbers([]);
       setTimeRemaining(0);
       await fetchNumbers();
+      
+      toast({
+        title: "Reservas liberadas",
+        description: "Suas reservas foram liberadas com sucesso",
+      });
     } catch (error) {
       console.error('Erro ao liberar reservas:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao liberar reservas. Tente novamente.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -186,7 +196,7 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [timeRemaining, fetchNumbers]);
 
-  // Cleanup automático
+  // Cleanup automático - reduzido para evitar muitas requisições
   useEffect(() => {
     const cleanupInterval = setInterval(async () => {
       try {
@@ -195,26 +205,9 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
       } catch (error) {
         console.error('Erro no cleanup:', error);
       }
-    }, 30000); // A cada 30 segundos
+    }, 60000); // A cada 60 segundos em vez de 30
 
     return () => clearInterval(cleanupInterval);
-  }, [fetchNumbers]);
-
-  // Setup realtime
-  useEffect(() => {
-    const channel = supabase
-      .channel('raffle_numbers_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'raffle_numbers' },
-        () => {
-          fetchNumbers();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [fetchNumbers]);
 
   // Load inicial

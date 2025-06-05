@@ -22,6 +22,8 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
         const urlParams = new URLSearchParams(window.location.search);
         const sessionId = urlParams.get('session_id');
 
+        console.log('PaymentSuccess - session_id:', sessionId);
+
         if (!sessionId) {
           console.log('No session_id found, redirecting to home');
           setIsConfirming(false);
@@ -35,6 +37,8 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
         const { data, error } = await supabase.functions.invoke('confirm-payment', {
           body: { session_id: sessionId }
         });
+
+        console.log('Confirm payment response:', { data, error });
 
         if (error) {
           console.error('Error confirming payment:', error);
@@ -62,7 +66,7 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
           description: "Houve um problema ao confirmar seu pagamento. Entre em contato conosco.",
           variant: "destructive"
         });
-        // Não redirecionar automaticamente em caso de erro
+        // Não redirecionar automaticamente em caso de erro para permitir debug
       } finally {
         setIsConfirming(false);
       }

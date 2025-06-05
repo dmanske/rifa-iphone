@@ -16,8 +16,11 @@ const Index = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const path = window.location.pathname;
     
+    console.log('Index useEffect - path:', path, 'params:', urlParams.toString());
+    
     // Verificar se está na rota de sucesso ou tem session_id
     if (path === '/success' || urlParams.get('session_id')) {
+      console.log('Setting view to success');
       setCurrentView('success');
       // Limpar a URL depois de capturar o session_id para evitar loops
       if (urlParams.get('session_id')) {
@@ -27,17 +30,20 @@ const Index = () => {
     } 
     // Verificar se está tentando acessar admin
     else if (urlParams.get('admin') === 'true') {
+      console.log('Setting view to admin');
       setCurrentView('admin');
     }
   }, []);
 
   const handleGoHome = () => {
+    console.log('Going home');
     setCurrentView('main');
     // Limpar URL
     window.history.replaceState({}, '', '/');
   };
 
   const renderView = () => {
+    console.log('Rendering view:', currentView);
     switch (currentView) {
       case 'auth':
         return <Auth onBack={() => setCurrentView('main')} />;
