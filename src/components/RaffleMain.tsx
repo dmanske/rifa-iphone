@@ -113,7 +113,7 @@ const RaffleMain: React.FC<RaffleMainProps> = ({ onShowAuth }) => {
             <div className="bg-white bg-opacity-20 rounded-xl p-6">
               <Gift className="w-8 h-8 mx-auto mb-3" />
               <h3 className="font-semibold mb-2">Prêmio Premium</h3>
-              <p className="text-sm text-blue-100">iPhone 16 Pro Max 256GB Titânio Natural</p>
+              <p className="text-sm text-blue-100">iPhone 16 Pro Max 256GB - Cor conforme disponibilidade</p>
             </div>
             <div className="bg-white bg-opacity-20 rounded-xl p-6">
               <Shield className="w-8 h-8 mx-auto mb-3" />
@@ -202,22 +202,23 @@ const RaffleMain: React.FC<RaffleMainProps> = ({ onShowAuth }) => {
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl shadow-lg p-6">
               <h4 className="font-bold mb-4">Prêmio</h4>
               
-              {/* Espaço para foto do iPhone */}
+              {/* Foto do iPhone */}
               <div className="bg-white bg-opacity-20 rounded-xl p-4 mb-4">
-                <div className="aspect-square bg-white bg-opacity-30 rounded-lg flex items-center justify-center">
-                  <span className="text-sm opacity-75">Foto do iPhone 16 Pro Max</span>
+                <div className="aspect-square bg-white bg-opacity-30 rounded-lg overflow-hidden">
+                  <img 
+                    src="https://cdn.prod.website-files.com/676fef229f30f66679b85804/677007c4d75dda57c06fb3cd_16%20Pro.png"
+                    alt="iPhone 16 Pro Max"
+                    className="w-full h-full object-contain"
+                  />
                 </div>
               </div>
               
               <div className="space-y-2 text-sm">
                 <p><strong>iPhone 16 Pro Max</strong></p>
                 <p>• 256GB de armazenamento</p>
-                <p>• Cor: Titânio Natural</p>
+                <p>• Cor: A escolher conforme disponibilidade</p>
                 <p>• Totalmente novo e lacrado</p>
                 <p>• Garantia Apple de 1 ano</p>
-              </div>
-              <div className="mt-4 text-xs opacity-90">
-                Valor aproximado: R$ 10.499,00
               </div>
             </div>
           </div>

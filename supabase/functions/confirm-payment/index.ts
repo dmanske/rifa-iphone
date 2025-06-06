@@ -91,8 +91,29 @@ serve(async (req) => {
       });
 
       if (saleError) {
-        console.error("Erro ao finalizar venda:", saleError);
+        console.error("Erro ao finalizar venda via RPC:", saleError);
+        
+        // Fallback: Atualizar números diretamente
+        console.log("Tentando atualização direta dos números...");
+        const { error: updateError } = await supabaseService
+          .from('raffle_numbers')
+          .update({
+            status: 'vendido',
+            sold_to: metadata.user_id,
+            sold_at: new Date().toISOString(),
+            reserved_by: null,
+            reserved_at: null,
+            reservation_expires_at: null,
+            updated_at: new Date().toISOString()
+          })
+          .in('numero', numeros);
+          
+        if (updateError) {
+          console.error("Erro na atualização direta:", updateError);
         throw new Error("Erro ao confirmar números vendidos");
+        }
+        
+        console.log("Números atualizados diretamente:", numeros);
       }
 
       // Log do pagamento processado
@@ -154,8 +175,29 @@ serve(async (req) => {
       });
 
       if (saleError) {
-        console.error("Erro ao finalizar venda:", saleError);
+        console.error("Erro ao finalizar venda via RPC:", saleError);
+        
+        // Fallback: Atualizar números diretamente
+        console.log("Tentando atualização direta dos números...");
+        const { error: updateError } = await supabaseService
+          .from('raffle_numbers')
+          .update({
+            status: 'vendido',
+            sold_to: metadata.user_id,
+            sold_at: new Date().toISOString(),
+            reserved_by: null,
+            reserved_at: null,
+            reservation_expires_at: null,
+            updated_at: new Date().toISOString()
+          })
+          .in('numero', numeros);
+          
+        if (updateError) {
+          console.error("Erro na atualização direta:", updateError);
         throw new Error("Erro ao confirmar números vendidos");
+        }
+        
+        console.log("Números atualizados diretamente:", numeros);
       }
 
       // Log do pagamento processado

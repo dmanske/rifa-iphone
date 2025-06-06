@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider } from '../hooks/useAuth';
 import { NumbersProvider } from '../context/NumbersContext';
+import { CartProvider } from '../context/CartContext';
 import Auth from '../components/Auth';
 import RaffleMain from '../components/RaffleMain';
 import PaymentSuccess from '../components/PaymentSuccess';
@@ -10,6 +11,7 @@ type ViewType = 'main' | 'auth' | 'success' | 'admin';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<ViewType>('main');
+  const [isLoading, setIsLoading] = useState(true);
 
   // Check for success page or admin access on load
   useEffect(() => {
@@ -18,12 +20,16 @@ const Index = () => {
     
     console.log('Index useEffect - path:', path, 'params:', urlParams.toString());
     
-    // Verificar se está na rota de sucesso ou tem session_id
-    if (path === '/success' || urlParams.get('session_id')) {
-      console.log('Setting view to success');
+    // Verificar se está na rota de sucesso ou tem parâmetros de pagamento
+    const hasStripeParams = urlParams.get('session_id'); // Stripe
+    const hasMercadoPagoParams = urlParams.get('payment_id') && urlParams.get('preference_id'); // MercadoPago
+    
+    if (path === '/success' || hasStripeParams || hasMercadoPagoParams) {
+      console.log('Setting view to success - Stripe:', !!hasStripeParams, 'MercadoPago:', !!hasMercadoPagoParams);
       setCurrentView('success');
-      // Limpar a URL depois de capturar o session_id para evitar loops
-      if (urlParams.get('session_id')) {
+      
+      // Garantir que a URL está correta
+      if (path !== '/success' && (hasStripeParams || hasMercadoPagoParams)) {
         const newUrl = window.location.origin + '/success' + '?' + urlParams.toString();
         window.history.replaceState({}, '', newUrl);
       }
@@ -33,6 +39,14 @@ const Index = () => {
       console.log('Setting view to admin');
       setCurrentView('admin');
     }
+    // Se não há parâmetros especiais, garantir que está na view main
+    else if (path === '/' && !urlParams.toString()) {
+      console.log('Setting view to main');
+      setCurrentView('main');
+    }
+    
+    // Remover loading após processar a rota
+    setTimeout(() => setIsLoading(false), 100);
   }, []);
 
   const handleGoHome = () => {
@@ -44,6 +58,23 @@ const Index = () => {
 
   const renderView = () => {
     console.log('Rendering view:', currentView);
+    
+    if (isLoading) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md w-full mx-4">
+            <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              Carregando...
+            </h2>
+            <p className="text-gray-600">
+              Aguarde um momento.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
     switch (currentView) {
       case 'auth':
         return <Auth onBack={() => setCurrentView('main')} />;
@@ -59,7 +90,9 @@ const Index = () => {
   return (
     <AuthProvider>
       <NumbersProvider>
+        <CartProvider>
         {renderView()}
+        </CartProvider>
       </NumbersProvider>
     </AuthProvider>
   );

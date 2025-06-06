@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CreditCard, Smartphone, Mail, User, Phone, CheckCircle, Loader2, Clock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -93,31 +92,94 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
     setIsProcessing(true);
 
     try {
-      // Criar sessão de checkout no Stripe
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      let functionName: string;
+      let providerName: string;
+
+      if (paymentMethod === 'pix') {
+        // Usar MercadoPago para Pix
+        functionName = 'create-mercadopago-payment';
+        providerName = 'MercadoPago';
+      } else {
+        // Usar Stripe para cartão
+        functionName = 'create-checkout-session';
+        providerName = 'Stripe';
+      }
+
+      console.log(`Processando pagamento via ${providerName}...`);
+
+      // TESTE DIRETO - para debug
+      if (functionName === 'create-mercadopago-payment') {
+        console.log("🧪 TESTE DIRETO com fetch...");
+        try {
+          const directResponse = await fetch(`https://pwhicfgtakcpiedtdiqn.supabase.co/functions/v1/${functionName}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            },
+            body: JSON.stringify({
+              numeros: selectedNumbers,
+              metodo_pagamento: paymentMethod,
+              nome: formData.name,
+              email: formData.email,
+              telefone: formData.phone,
+              user_id: user.id,
+            })
+          });
+          
+          const directData = await directResponse.text();
+          console.log("📤 Status direto:", directResponse.status);
+          console.log("📦 Resposta direta:", directData);
+          
+          if (directResponse.ok) {
+            const jsonData = JSON.parse(directData);
+            if (jsonData.url) {
+              window.location.href = jsonData.url;
+              return;
+            }
+          }
+        } catch (directError) {
+          console.error("❌ Erro no teste direto:", directError);
+        }
+      }
+
+      // Criar sessão de checkout
+      const { data, error } = await supabase.functions.invoke(functionName, {
         body: {
           numeros: selectedNumbers,
           metodo_pagamento: paymentMethod,
           nome: formData.name,
           email: formData.email,
           telefone: formData.phone,
+          user_id: user.id,
         }
       });
 
       if (error) {
-        console.error('Erro na função:', error);
-        throw new Error(error.message || 'Erro ao processar pagamento');
+        console.error(`Erro na função ${functionName}:`, error);
+        console.error("Detalhes do erro:", data); // Mostrar dados da resposta também
+        throw new Error(error.message || `Erro ao processar pagamento via ${providerName}`);
       }
 
       if (!data.url) {
         throw new Error('URL de pagamento não recebida');
       }
 
-      // Redirecionar para o Stripe Checkout
+      console.log(`Redirecionando para ${providerName}:`, data.url);
+
+      // Redirecionar para o checkout (MercadoPago ou Stripe)
       window.location.href = data.url;
 
     } catch (error) {
       console.error('Erro no checkout:', error);
+      console.error('Dados enviados:', {
+        numeros: selectedNumbers,
+        metodo_pagamento: paymentMethod,
+        nome: formData.name,
+        email: formData.email,
+        telefone: formData.phone,
+        user_id: user.id,
+      });
       toast({
         title: "Erro no processamento",
         description: error instanceof Error ? error.message : "Houve um problema ao processar seu pagamento. Tente novamente.",
@@ -368,7 +430,7 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
         </form>
 
         <div className="mt-6 text-xs text-gray-500 text-center">
-          ✓ Dados seguros e criptografados • ✓ Processamento via Stripe
+          ✓ Dados seguros e criptografados • ✓ Processamento via {paymentMethod === 'pix' ? 'MercadoPago' : 'Stripe'}
         </div>
       </div>
     </div>

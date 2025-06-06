@@ -215,6 +215,42 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
     fetchNumbers();
   }, [fetchNumbers]);
 
+  // Realtime subscription para atualizar números em tempo real
+  useEffect(() => {
+    const channel = supabase
+      .channel('raffle_numbers_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'raffle_numbers'
+        },
+        () => {
+          console.log('Números atualizados em tempo real');
+          fetchNumbers();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'transactions',
+          filter: 'status=eq.pago'
+        },
+        () => {
+          console.log('Transação confirmada - atualizando números');
+          fetchNumbers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchNumbers]);
+
   const value: NumbersContextType = {
     numbers,
     loading,

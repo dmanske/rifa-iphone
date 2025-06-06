@@ -87,8 +87,23 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
     setIsProcessing(true);
 
     try {
-      // Criar sessão de checkout no Stripe
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      let functionName: string;
+      let providerName: string;
+
+      if (paymentMethod === 'pix') {
+        // Usar MercadoPago para Pix
+        functionName = 'create-mercadopago-payment';
+        providerName = 'MercadoPago';
+      } else {
+        // Usar Stripe para cartão
+        functionName = 'create-checkout-session';
+        providerName = 'Stripe';
+      }
+
+      console.log(`Processando pagamento via ${providerName}...`);
+
+      // Criar sessão de checkout
+      const { data, error } = await supabase.functions.invoke(functionName, {
         body: {
           numeros: cartItems.map(item => item.number),
           metodo_pagamento: paymentMethod,
@@ -99,15 +114,17 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
       });
 
       if (error) {
-        console.error('Erro na função:', error);
-        throw new Error(error.message || 'Erro ao processar pagamento');
+        console.error(`Erro na função ${functionName}:`, error);
+        throw new Error(error.message || `Erro ao processar pagamento via ${providerName}`);
       }
 
       if (!data.url) {
         throw new Error('URL de pagamento não recebida');
       }
 
-      // Redirecionar para o Stripe Checkout
+      console.log(`Redirecionando para ${providerName}:`, data.url);
+
+      // Redirecionar para o checkout (MercadoPago ou Stripe)
       window.location.href = data.url;
 
     } catch (error) {
@@ -323,7 +340,7 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
       </form>
 
       <div className="mt-4 text-xs text-gray-500 text-center">
-        ✓ Dados seguros e criptografados • ✓ Processamento via Stripe
+          ✓ Dados seguros e criptografados • ✓ Processamento via {paymentMethod === 'pix' ? 'MercadoPago' : 'Stripe'}
       </div>
     </div>
   );
