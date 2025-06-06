@@ -52,8 +52,11 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
 
   const handlePaymentConfirmed = () => {
     console.log('🎉 Pagamento confirmado! Redirecionando para home...');
-    // Redirecionar para home com parâmetros de sucesso
-    window.location.href = '/?payment_success=true';
+    
+    // Usar o mesmo método que o cartão - redirecionamento direto
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('payment_success', 'true');
+    window.location.href = currentUrl.toString();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -150,10 +153,10 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
         
         toast({
           title: "PIX criado com sucesso!",
-          description: "Complete o pagamento na nova aba e aguarde a confirmação automática.",
+          description: "Complete o pagamento na nova aba. A confirmação será automática.",
         });
       } else {
-        // Para cartão, redirecionar diretamente
+        // Para cartão, redirecionar diretamente (igual ao fluxo atual)
         console.log(`Redirecionando para ${providerName}:`, data.url);
         window.location.href = data.url;
       }
