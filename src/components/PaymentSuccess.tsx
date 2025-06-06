@@ -28,10 +28,11 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
         const status = urlParams.get('status'); // MercadoPago
         const hasPaymentSuccess = urlParams.get('payment_success') === 'true'; // MercadoPago
         const hasPaymentPending = urlParams.get('payment_pending') === 'true'; // MercadoPago
+        const transactionId = urlParams.get('transaction_id'); // ID direto da transação
 
         console.log('PaymentSuccess - Parâmetros:', { 
           sessionId, paymentId, collectionStatus, preferenceId, status, 
-          hasPaymentSuccess, hasPaymentPending 
+          hasPaymentSuccess, hasPaymentPending, transactionId 
         });
 
         // Verificar se é Stripe ou MercadoPago
@@ -101,22 +102,36 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
             throw new Error('Dados da compra não encontrados');
           }
 
-        } else if (paymentId || preferenceId || hasPaymentSuccess || hasPaymentPending) {
+        } else if (paymentId || preferenceId || hasPaymentSuccess || hasPaymentPending || transactionId) {
           // MERCADOPAGO
-          console.log('🔍 Processando MercadoPago payment:', { paymentId, status, collectionStatus, hasPaymentSuccess, hasPaymentPending });
+          console.log('🔍 Processando MercadoPago payment:', { paymentId, status, collectionStatus, hasPaymentSuccess, hasPaymentPending, transactionId });
 
-          // 🔧 MELHORAR: Verificar transações no banco para pegar os dados
+          // 1. Primeiro, tentar buscar por transaction_id direto se disponível
           let transactionData = null;
           
-          // Se temos preference_id ou payment_id, buscar a transação
-          if (preferenceId || paymentId) {
-            console.log('🔍 Buscando transação no banco...');
+          if (transactionId) {
+            console.log('🔍 Buscando transação por ID direto:', transactionId);
+            
+            const { data: transaction, error: txError } = await supabase
+              .from('transactions')
+              .select('*')
+              .eq('id', transactionId)
+              .single();
+
+            if (!txError && transaction) {
+              transactionData = transaction;
+              console.log('✅ Transação encontrada por ID direto:', transactionData);
+            }
+          }
+          
+          // 2. Se não encontrou, buscar por preference_id ou payment_id
+          if (!transactionData && (preferenceId || paymentId)) {
+            console.log('🔍 Buscando transação no banco por payment_id...');
             
             const { data: transactions, error: txError } = await supabase
               .from('transactions')
               .select('*')
               .or(`payment_id.eq.${preferenceId || paymentId},payment_id.eq.${paymentId || preferenceId}`)
-              .eq('status', 'pago')
               .order('created_at', { ascending: false })
               .limit(1);
 
@@ -124,30 +139,19 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
               transactionData = transactions[0];
               console.log('✅ Transação encontrada no banco:', transactionData);
             } else {
-              console.log('⚠️ Transação não encontrada ou ainda não processada:', txError);
+              console.log('⚠️ Transação não encontrada:', txError);
             }
           }
+
+          // 3. Determinar o status baseado na transação do banco (prioridade) ou parâmetros da URL
+          const realStatus = transactionData?.status;
           
-          if (status === 'pending' || collectionStatus === 'pending' || hasPaymentPending) {
-            // Pagamento PIX pendente - mostrar informações
-            console.log('💳 Status: Pendente');
-            setPurchaseData({
-              status: 'pending',
-              payment_id: paymentId,
-              preference_id: preferenceId,
-              metodo_pagamento: 'pix',
-              ...transactionData
-            });
-            clearCart();
-            
-            toast({
-              title: "Pagamento PIX iniciado!",
-              description: "Aguardando confirmação do pagamento.",
-              variant: "default"
-            });
-          } else if (status === 'approved' || collectionStatus === 'approved' || hasPaymentSuccess || transactionData) {
-            // Pagamento aprovado ou transação confirmada no banco
-            console.log('✅ Status: Aprovado');
+          console.log('🔍 Status real da transação no banco:', realStatus);
+          console.log('🔍 Status dos parâmetros URL:', { status, collectionStatus, hasPaymentSuccess, hasPaymentPending });
+
+          if (realStatus === 'pago' || hasPaymentSuccess) {
+            // Pagamento confirmado - usar dados do banco
+            console.log('✅ Status: Confirmado (banco ou parâmetro)');
             setPurchaseData({
               status: 'approved',
               payment_id: paymentId,
@@ -168,21 +172,76 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
               title: "Pagamento aprovado!",
               description: "Seus números foram reservados com sucesso.",
             });
-          } else {
-            // Outros status do MercadoPago
-            console.log('⚠️ Status:', status || 'unknown');
+          } else if (realStatus === 'pendente' || status === 'pending' || collectionStatus === 'pending' || hasPaymentPending) {
+            // Pagamento pendente
+            console.log('💳 Status: Pendente');
             setPurchaseData({
-              status: status || 'unknown',
+              status: 'pending',
               payment_id: paymentId,
               preference_id: preferenceId,
-              error: status !== 'approved'
+              metodo_pagamento: transactionData?.metodo_pagamento || 'pix',
+              numeros: transactionData?.numeros_comprados || [],
+              valor_pago: transactionData?.valor_total || 0,
+              nome: transactionData?.nome || '',
+              email: transactionData?.email || '',
+              ...transactionData
             });
             clearCart();
             
             toast({
-              title: "Status do pagamento",
-              description: `Status: ${status || 'Verificando...'}`,
+              title: "Pagamento PIX iniciado!",
+              description: "Aguardando confirmação do pagamento.",
               variant: "default"
+            });
+          } else {
+            // Status desconhecido - verificar novamente em alguns segundos
+            console.log('⚠️ Status desconhecido, verificando novamente...');
+            
+            setTimeout(async () => {
+              // Tentar buscar novamente após 3 segundos
+              if (transactionId || preferenceId || paymentId) {
+                const searchId = transactionId || preferenceId || paymentId;
+                const field = transactionId ? 'id' : 'payment_id';
+                
+                const { data: retryTransaction, error: retryError } = await supabase
+                  .from('transactions')
+                  .select('*')
+                  .eq(field, searchId)
+                  .single();
+
+                if (!retryError && retryTransaction) {
+                  console.log('🔄 Status atualizado:', retryTransaction.status);
+                  
+                  if (retryTransaction.status === 'pago') {
+                    // Recarregar a página com parâmetros de sucesso
+                    window.location.href = `/?payment_success=true&transaction_id=${retryTransaction.id}`;
+                    return;
+                  }
+                }
+              }
+              
+              // Se ainda não foi processado, mostrar status genérico
+              setPurchaseData({
+                status: status || 'unknown',
+                payment_id: paymentId,
+                preference_id: preferenceId,
+                error: false,
+                ...transactionData
+              });
+              clearCart();
+              
+              toast({
+                title: "Status do pagamento",
+                description: `Status: ${status || 'Verificando...'}`,
+                variant: "default"
+              });
+            }, 3000);
+            
+            // Mostrar loading enquanto verifica
+            setPurchaseData({
+              status: 'checking',
+              payment_id: paymentId,
+              preference_id: preferenceId,
             });
           }
 
@@ -232,6 +291,23 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
           </h2>
           <p className="text-gray-600">
             Aguarde enquanto processamos sua compra.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Status especial para quando está verificando
+  if (purchaseData?.status === 'checking') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md w-full mx-4">
+          <Loader2 className="w-16 h-16 text-orange-600 animate-spin mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            Verificando status do pagamento...
+          </h2>
+          <p className="text-gray-600">
+            Aguarde enquanto verificamos se seu pagamento foi processado.
           </p>
         </div>
       </div>

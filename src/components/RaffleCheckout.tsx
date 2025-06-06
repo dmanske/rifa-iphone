@@ -1,188 +1,128 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, CreditCard, Smartphone, Mail, User, Phone, CheckCircle, Loader2, Clock } from 'lucide-react';
+import React, { useState } from 'react';
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
+import { useCart } from '../context/CartContext';
 import { useAuth } from '../hooks/useAuth';
-import { useNumbers } from '../context/NumbersContext';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface RaffleCheckoutProps {
-  onBack: () => void;
-  selectedNumbers: number[];
+  onClose: () => void;
 }
 
-const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers }) => {
-  const { user, profile } = useAuth();
-  const { timeRemaining } = useNumbers();
+const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onClose }) => {
+  const { cartItems, clearCart } = useCart();
+  const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const [formData, setFormData] = useState({
+    nome: user?.user_metadata?.name || '',
+    email: user?.email || '',
+    telefone: ''
+  });
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao'>('pix');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: profile?.full_name || '',
-    email: user?.email || '',
-    phone: profile?.phone || '',
-  });
 
-  useEffect(() => {
-    if (profile) {
-      setFormData(prev => ({
-        ...prev,
-        name: profile.full_name || prev.name,
-        phone: profile.phone || prev.phone,
-      }));
-    }
-  }, [profile]);
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const basePrice = selectedNumbers.length * 100;
-  const pixTotal = basePrice;
-  const cardTotal = Math.round(basePrice * 1.05); // 5% taxa cartão
-  const finalTotal = paymentMethod === 'pix' ? pixTotal : cardTotal;
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!user) {
-      toast({
-        title: "Login necessário",
-        description: "Você precisa estar logado para finalizar a compra",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.name.trim()) {
-      toast({
-        title: "Nome obrigatório",
-        description: "Por favor, informe seu nome completo",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.email.trim()) {
-      toast({
-        title: "E-mail obrigatório",
-        description: "Por favor, informe seu e-mail",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (selectedNumbers.length === 0) {
-      toast({
-        title: "Nenhum número selecionado",
-        description: "Selecione números antes de finalizar a compra",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsProcessing(true);
-
+  const handleMercadoPagoPayment = async () => {
     try {
-      let functionName: string;
-      let providerName: string;
+      setIsProcessing(true);
+      console.log('🔄 Iniciando pagamento MercadoPago...');
 
-      if (paymentMethod === 'pix') {
-        // Usar MercadoPago para Pix
-        functionName = 'create-mercadopago-payment';
-        providerName = 'MercadoPago';
-      } else {
-        // Usar Stripe para cartão
-        functionName = 'create-checkout-session';
-        providerName = 'Stripe';
-      }
-
-      console.log(`Processando pagamento via ${providerName}...`);
-
-      // TESTE DIRETO - para debug
-      if (functionName === 'create-mercadopago-payment') {
-        console.log("🧪 TESTE DIRETO com fetch...");
-        try {
-          const directResponse = await fetch(`https://pwhicfgtakcpiedtdiqn.supabase.co/functions/v1/${functionName}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            },
-            body: JSON.stringify({
-              numeros: selectedNumbers,
-              metodo_pagamento: paymentMethod,
-              nome: formData.name,
-              email: formData.email,
-              telefone: formData.phone,
-              user_id: user.id,
-            })
-          });
-          
-          const directData = await directResponse.text();
-          console.log("📤 Status direto:", directResponse.status);
-          console.log("📦 Resposta direta:", directData);
-          
-          if (directResponse.ok) {
-            const jsonData = JSON.parse(directData);
-            if (jsonData.url) {
-              window.location.href = jsonData.url;
-              return;
-            }
-          }
-        } catch (directError) {
-          console.error("❌ Erro no teste direto:", directError);
-        }
-      }
-
-      // Criar sessão de checkout
-      const { data, error } = await supabase.functions.invoke(functionName, {
+      const { data, error } = await supabase.functions.invoke('create-mercadopago-payment', {
         body: {
-          numeros: selectedNumbers,
+          numeros: cartItems,
           metodo_pagamento: paymentMethod,
-          nome: formData.name,
+          nome: formData.nome,
           email: formData.email,
-          telefone: formData.phone,
-          user_id: user.id,
+          telefone: formData.telefone,
+          user_id: user.id
         }
       });
 
       if (error) {
-        console.error(`Erro na função ${functionName}:`, error);
-        console.error("Detalhes do erro:", data); // Mostrar dados da resposta também
-        throw new Error(error.message || `Erro ao processar pagamento via ${providerName}`);
+        console.error('❌ Erro ao criar pagamento:', error);
+        toast({
+          title: "Erro no pagamento",
+          description: error.message || "Erro ao processar pagamento",
+          variant: "destructive"
+        });
+        return;
       }
 
-      if (!data.url) {
-        throw new Error('URL de pagamento não recebida');
+      console.log('✅ Pagamento criado:', data);
+
+      if (data?.url) {
+        // Abrir em nova janela
+        const paymentWindow = window.open(data.url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+        
+        if (!paymentWindow) {
+          // Fallback se popup foi bloqueado
+          window.location.href = data.url;
+          return;
+        }
+
+        // Monitorar se a janela foi fechada ou se houve redirecionamento
+        const checkPayment = setInterval(async () => {
+          try {
+            // Verificar se a janela ainda está aberta
+            if (paymentWindow.closed) {
+              clearInterval(checkPayment);
+              console.log('🔍 Janela de pagamento fechada, verificando status...');
+              
+              // Verificar se o pagamento foi processado
+              await checkPaymentStatus(data.transaction_id);
+              return;
+            }
+
+            // Tentar acessar a URL da janela (funciona se estiver no mesmo domínio)
+            try {
+              const currentUrl = paymentWindow.location.href;
+              if (currentUrl && (currentUrl.includes('payment_success=true') || currentUrl.includes('payment_pending=true'))) {
+                clearInterval(checkPayment);
+                paymentWindow.close();
+                console.log('✅ Redirecionamento detectado:', currentUrl);
+                
+                // Redirecionar para a página de sucesso
+                if (currentUrl.includes('payment_success=true')) {
+                  window.location.href = '/?payment_success=true&transaction_id=' + data.transaction_id;
+                } else {
+                  window.location.href = '/?payment_pending=true&transaction_id=' + data.transaction_id;
+                }
+                return;
+              }
+            } catch (e) {
+              // Erro de CORS é esperado quando está em domínio diferente
+            }
+          } catch (error) {
+            console.error('Erro ao verificar janela:', error);
+          }
+        }, 1000);
+
+        // Timeout após 5 minutos
+        setTimeout(() => {
+          if (!paymentWindow.closed) {
+            clearInterval(checkPayment);
+            console.log('⏰ Timeout na verificação de pagamento');
+          }
+        }, 300000);
+
+      } else {
+        throw new Error('URL de pagamento não retornada');
       }
-
-      console.log(`Redirecionando para ${providerName}:`, data.url);
-
-      // Redirecionar para o checkout (MercadoPago ou Stripe)
-      window.location.href = data.url;
 
     } catch (error) {
-      console.error('Erro no checkout:', error);
-      console.error('Dados enviados:', {
-        numeros: selectedNumbers,
-        metodo_pagamento: paymentMethod,
-        nome: formData.name,
-        email: formData.email,
-        telefone: formData.phone,
-        user_id: user.id,
-      });
+      console.error('❌ Erro:', error);
       toast({
-        title: "Erro no processamento",
-        description: error instanceof Error ? error.message : "Houve um problema ao processar seu pagamento. Tente novamente.",
+        title: "Erro",
+        description: "Erro ao processar pagamento. Tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -190,247 +130,104 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
     }
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md w-full mx-4">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <User className="w-8 h-8 text-red-600" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Login Necessário</h3>
-          <p className="text-gray-600 mb-6">
-            Você precisa estar logado para finalizar a compra.
-          </p>
-          <button
-            onClick={onBack}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
-          >
-            Voltar
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Função para verificar o status do pagamento no banco
+  const checkPaymentStatus = async (transactionId: string) => {
+    try {
+      console.log('🔍 Verificando status da transação:', transactionId);
+      
+      const { data: transaction, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', transactionId)
+        .single();
+
+      if (error) {
+        console.error('❌ Erro ao buscar transação:', error);
+        return;
+      }
+
+      console.log('📋 Status da transação:', transaction?.status);
+
+      if (transaction?.status === 'pago') {
+        // Pagamento confirmado, redirecionar para sucesso
+        window.location.href = '/?payment_success=true&transaction_id=' + transactionId;
+      } else if (transaction?.status === 'pendente') {
+        // Pagamento ainda pendente
+        window.location.href = '/?payment_pending=true&transaction_id=' + transactionId;
+      } else {
+        // Voltar para o checkout
+        toast({
+          title: "Status do pagamento",
+          description: "Verifique o status do seu pagamento. Se já foi pago, aguarde alguns minutos.",
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao verificar pagamento:', error);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-3xl mx-auto px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={onBack}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="mt-3 text-center">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">
+            Checkout
+          </h3>
+          <div className="mt-2 px-7 py-3">
+            <Input
+              type="text"
+              name="nome"
+              placeholder="Nome Completo"
+              value={formData.nome}
+              onChange={handleChange}
+              className="mb-4"
+            />
+            <Input
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={formData.email}
+              onChange={handleChange}
+              className="mb-4"
+            />
+            <Input
+              type="tel"
+              name="telefone"
+              placeholder="Telefone (opcional)"
+              value={formData.telefone}
+              onChange={handleChange}
+              className="mb-4"
+            />
+
+            <div className="mb-4">
+              <Label className="block text-gray-700 text-sm font-bold mb-2">
+                Método de Pagamento
+              </Label>
+              <RadioGroup defaultValue="pix" className="flex space-x-2" onValueChange={value => setPaymentMethod(value === 'pix' ? 'pix' : 'cartao')}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="pix" id="r1" className="peer h-4 w-4 border border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800" />
+                  <Label htmlFor="r1" className="text-sm font-medium text-gray-900 dark:text-gray-300">
+                    PIX
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="cartao" id="r2" className="peer h-4 w-4 border border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800" />
+                  <Label htmlFor="r2" className="text-sm font-medium text-gray-900 dark:text-gray-300">
+                    Cartão de Crédito
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+          <div className="items-center px-4 py-3">
+            <Button
+              onClick={handleMercadoPagoPayment}
+              disabled={isProcessing}
+              className="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Finalizar Compra</h1>
-              <p className="text-sm text-gray-600">{selectedNumbers.length} números selecionados</p>
-            </div>
+              {isProcessing ? 'Processando...' : 'Pagar com Mercado Pago'}
+            </Button>
           </div>
-        </div>
-      </div>
-
-      <div className="max-w-3xl mx-auto px-6 py-8">
-        {/* Timer de reserva */}
-        {timeRemaining > 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-            <div className="flex items-center space-x-3">
-              <Clock className="w-5 h-5 text-yellow-600" />
-              <div>
-                <h3 className="font-semibold text-yellow-800">
-                  Números Reservados
-                </h3>
-                <p className="text-sm text-yellow-700">
-                  Tempo restante: {formatTime(timeRemaining)}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Números selecionados */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Números Selecionados</h3>
-            <div className="grid grid-cols-10 gap-2 mb-4">
-              {selectedNumbers.map(num => (
-                <div
-                  key={num}
-                  className="bg-green-100 text-green-800 p-2 rounded text-center text-sm font-bold"
-                >
-                  {num.toString().padStart(3, '0')}
-                </div>
-              ))}
-            </div>
-            <div className="text-sm text-gray-600">
-              {selectedNumbers.length} números × R$ 100,00 = R$ {basePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-          </div>
-
-          {/* Informações Pessoais */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Informações Pessoais</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <User className="w-4 h-4 inline mr-2" />
-                  Nome Completo *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Seu nome completo"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Phone className="w-4 h-4 inline mr-2" />
-                  Telefone/WhatsApp
-                  <span className="text-gray-500 text-xs ml-1">(opcional)</span>
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="(11) 99999-9999"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Mail className="w-4 h-4 inline mr-2" />
-                E-mail *
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="seu@email.com"
-              />
-            </div>
-          </div>
-
-          {/* Método de Pagamento */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Método de Pagamento</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Pix Option */}
-              <label className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
-                paymentMethod === 'pix' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-green-300'
-              }`}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="pix"
-                  checked={paymentMethod === 'pix'}
-                  onChange={(e) => setPaymentMethod(e.target.value as 'pix')}
-                  className="sr-only"
-                />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Smartphone className="w-6 h-6 text-green-600" />
-                    <div>
-                      <div className="font-semibold text-gray-900">Pix</div>
-                      <div className="text-sm text-gray-600">Aprovação instantânea</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-green-600">
-                      R$ {pixTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </div>
-                    <div className="text-xs text-green-600">Sem taxa</div>
-                  </div>
-                </div>
-              </label>
-
-              {/* Card Option */}
-              <label className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
-                paymentMethod === 'cartao' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
-              }`}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="cartao"
-                  checked={paymentMethod === 'cartao'}
-                  onChange={(e) => setPaymentMethod(e.target.value as 'cartao')}
-                  className="sr-only"
-                />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <CreditCard className="w-6 h-6 text-blue-600" />
-                    <div>
-                      <div className="font-semibold text-gray-900">Cartão</div>
-                      <div className="text-sm text-gray-600">Taxa 5%</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-blue-600">
-                      R$ {cardTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </div>
-                    <div className="text-xs text-blue-600">+ R$ {(cardTotal - pixTotal).toFixed(2)}</div>
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          {/* Resumo do Pedido */}
-          <div className="bg-gray-50 rounded-xl p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Resumo do Pedido</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">{selectedNumbers.length} números × R$ 100,00</span>
-                <span className="text-gray-900">R$ {basePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-              </div>
-              {paymentMethod === 'cartao' && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Taxa de processamento (5%)</span>
-                  <span className="text-gray-900">R$ {(cardTotal - pixTotal).toFixed(2)}</span>
-                </div>
-              )}
-              <div className="border-t pt-2 flex justify-between font-semibold text-lg">
-                <span>Total</span>
-                <span className="text-green-600">R$ {finalTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isProcessing}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white py-4 rounded-xl font-semibold text-lg transition-all duration-200 hover:scale-105 shadow-lg disabled:scale-100 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Processando...</span>
-              </>
-            ) : (
-              <span>
-                Pagar com {paymentMethod === 'pix' ? 'Pix' : 'Cartão'} - R$ {finalTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </span>
-            )}
-          </button>
-        </form>
-
-        <div className="mt-6 text-xs text-gray-500 text-center">
-          ✓ Dados seguros e criptografados • ✓ Processamento via {paymentMethod === 'pix' ? 'MercadoPago' : 'Stripe'}
         </div>
       </div>
     </div>
