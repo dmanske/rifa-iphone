@@ -69,40 +69,40 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
           });
           
           // Iniciar timer de processamento (7 segundos)
-          let countdown = 7;
-          setProcessingTimer(countdown);
-          
           processingIntervalRef.current = setInterval(() => {
-            countdown--;
-            setProcessingTimer(countdown);
-            console.log('⏰ Timer de processamento:', countdown);
-            
-            if (countdown <= 0) {
-              console.log('⏰ Timer finalizado, redirecionando...');
-              if (processingIntervalRef.current) {
-                clearInterval(processingIntervalRef.current);
-              }
-              setStatus('confirmed');
+            setProcessingTimer(prev => {
+              const newTimer = prev - 1;
+              console.log('⏰ Timer de processamento:', newTimer);
               
-              toast({
-                title: "Processamento concluído!",
-                description: "Redirecionando para seus números da sorte...",
-              });
-              
-              // Redirecionar para a tela de sucesso com os parâmetros necessários
-              setTimeout(() => {
-                const urlParams = new URLSearchParams();
-                urlParams.set('payment_success', 'true');
-                urlParams.set('payment_id', paymentId);
-                urlParams.set('transaction_id', transactionId);
-                urlParams.set('status', 'approved');
-                urlParams.set('source', 'mercadopago');
+              if (newTimer <= 0) {
+                console.log('⏰ Timer finalizado, redirecionando...');
+                if (processingIntervalRef.current) {
+                  clearInterval(processingIntervalRef.current);
+                }
+                setStatus('confirmed');
                 
-                const newUrl = window.location.origin + '/success?' + urlParams.toString();
-                console.log('🔄 Redirecionando para:', newUrl);
-                window.location.href = newUrl;
-              }, 1500);
-            }
+                toast({
+                  title: "Processamento concluído!",
+                  description: "Redirecionando para seus números da sorte...",
+                });
+                
+                // Redirecionar para a tela de sucesso com os parâmetros necessários
+                setTimeout(() => {
+                  const urlParams = new URLSearchParams();
+                  urlParams.set('payment_success', 'true');
+                  urlParams.set('payment_id', paymentId);
+                  urlParams.set('transaction_id', transactionId);
+                  urlParams.set('status', 'approved');
+                  urlParams.set('source', 'mercadopago');
+                  
+                  const newUrl = window.location.origin + '/success?' + urlParams.toString();
+                  console.log('🔄 Redirecionando para:', newUrl);
+                  window.location.href = newUrl;
+                }, 1500);
+              }
+              
+              return newTimer;
+            });
           }, 1000);
         }
       } catch (error) {
