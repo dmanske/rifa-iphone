@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste MercadoPago</title>
+</head>
+<body>
+    <h1>Teste MercadoPago Function</h1>
+    <button onclick="testarFuncao()">Testar Função</button>
+    <div id="resultado"></div>
+
+    <script>
+        async function testarFuncao() {
+            const resultado = document.getElementById('resultado');
+            resultado.innerHTML = 'Testando...';
+            
+            try {
+                const response = await fetch('https://pwhicfgtakcpiedtdiqn.supabase.co/functions/v1/create-mercadopago-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3aGljZmd0YWtjcGllZHRkaXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzMyMTcwNzUsImV4cCI6MjA0ODc5MzA3NX0.wQ7WiVwMFh_bgGCnBmZp5BHMVYMj3YzxkDhE3GFt5Ug'
+                    },
+                    body: JSON.stringify({
+                        numeros: [1, 2, 3],
+                        metodo_pagamento: 'pix',
+                        nome: 'Teste',
+                        email: 'teste@teste.com'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                resultado.innerHTML = `
+                    <h3>Status: ${response.status}</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultado.innerHTML = `
+                    <h3>Erro:</h3>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html> 
