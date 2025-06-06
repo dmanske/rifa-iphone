@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { CheckCircle, Loader2, ArrowLeft, Clock, QrCode } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,7 +26,7 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [status, setStatus] = useState<'waiting' | 'confirmed' | 'processing' | 'timeout'>('waiting');
   const [checkCount, setCheckCount] = useState(0);
-  const [processingTimer, setProcessingTimer] = useState(0);
+  const [processingTimer, setProcessingTimer] = useState(7);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const processingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -69,16 +68,17 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
             description: "Aguarde enquanto finalizamos o processamento...",
           });
           
-          // Iniciar timer de processamento (6-8 segundos)
-          const PROCESSING_TIME = 7000; // 7 segundos
-          let countdown = PROCESSING_TIME / 1000;
+          // Iniciar timer de processamento (7 segundos)
+          let countdown = 7;
           setProcessingTimer(countdown);
           
           processingIntervalRef.current = setInterval(() => {
             countdown--;
             setProcessingTimer(countdown);
+            console.log('⏰ Timer de processamento:', countdown);
             
             if (countdown <= 0) {
+              console.log('⏰ Timer finalizado, redirecionando...');
               if (processingIntervalRef.current) {
                 clearInterval(processingIntervalRef.current);
               }
