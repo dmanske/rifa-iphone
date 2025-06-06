@@ -89,9 +89,18 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
                 description: "Redirecionando para seus números da sorte...",
               });
               
-              // Redirecionar após breve pausa
+              // Redirecionar para a tela de sucesso com os parâmetros necessários
               setTimeout(() => {
-                onPaymentConfirmed();
+                const urlParams = new URLSearchParams();
+                urlParams.set('payment_success', 'true');
+                urlParams.set('payment_id', paymentId);
+                urlParams.set('transaction_id', transactionId);
+                urlParams.set('status', 'approved');
+                urlParams.set('source', 'mercadopago');
+                
+                const newUrl = window.location.origin + '/success?' + urlParams.toString();
+                console.log('🔄 Redirecionando para:', newUrl);
+                window.location.href = newUrl;
               }, 1500);
             }
           }, 1000);
