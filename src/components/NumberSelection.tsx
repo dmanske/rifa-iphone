@@ -18,12 +18,16 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
   const [soldNumbers, setSoldNumbers] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Buscar números vendidos sempre que o componente montar ou quando o usuário mudar
   useEffect(() => {
     fetchSoldNumbers();
-  }, []);
+  }, [user]); // Adicionado user como dependência
 
   const fetchSoldNumbers = async () => {
     try {
+      console.log('🔄 Buscando números vendidos...');
+      setLoading(true);
+      
       const { data, error } = await supabase
         .from('transactions')
         .select('numeros_comprados')
@@ -41,6 +45,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
         }
       });
 
+      console.log('📊 Números vendidos carregados:', allSoldNumbers.length);
       setSoldNumbers(allSoldNumbers);
     } catch (error) {
       console.error('Erro inesperado:', error);
@@ -48,6 +53,29 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
       setLoading(false);
     }
   };
+
+  // Realtime subscription para atualizar números quando houver mudanças
+  useEffect(() => {
+    const channel = supabase
+      .channel('transactions_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions'
+        },
+        (payload) => {
+          console.log('🔄 Transação atualizada em tempo real:', payload);
+          fetchSoldNumbers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const isNumberSold = (number: number) => soldNumbers.includes(number);
   const isNumberInCart = (number: number) => cartItems.some(item => item.number === number);
