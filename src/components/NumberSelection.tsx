@@ -21,34 +21,49 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
   // Buscar números vendidos sempre que o componente montar ou quando o usuário mudar
   useEffect(() => {
     fetchSoldNumbers();
-  }, [user]); // Adicionado user como dependência
+  }, [user]);
 
   const fetchSoldNumbers = async () => {
     try {
       console.log('🔄 Buscando números vendidos...');
       setLoading(true);
       
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('numeros_comprados')
-        .eq('status', 'pago');
+      // Buscar primeiro da tabela raffle_numbers (fonte principal)
+      const { data: raffleData, error: raffleError } = await supabase
+        .from('raffle_numbers')
+        .select('numero')
+        .eq('status', 'vendido');
 
-      if (error) {
-        console.error('Erro ao buscar números vendidos:', error);
-        return;
-      }
+      let allSoldNumbers: number[] = [];
 
-      const allSoldNumbers: number[] = [];
-      data?.forEach(transaction => {
-        if (transaction.numeros_comprados) {
-          allSoldNumbers.push(...transaction.numeros_comprados);
+      if (raffleError) {
+        console.warn('⚠️ Erro ao buscar de raffle_numbers, usando fallback:', raffleError);
+        
+        // Fallback: buscar da tabela transactions
+        const { data: transactionData, error: transactionError } = await supabase
+          .from('transactions')
+          .select('numeros_comprados')
+          .eq('status', 'pago');
+
+        if (transactionError) {
+          console.error('❌ Erro em ambas as consultas:', transactionError);
+          return;
         }
-      });
+
+        transactionData?.forEach(transaction => {
+          if (transaction.numeros_comprados) {
+            allSoldNumbers.push(...transaction.numeros_comprados);
+          }
+        });
+      } else {
+        // Usar dados da raffle_numbers (preferencial)
+        allSoldNumbers = raffleData?.map(item => item.numero) || [];
+      }
 
       console.log('📊 Números vendidos carregados:', allSoldNumbers.length);
       setSoldNumbers(allSoldNumbers);
     } catch (error) {
-      console.error('Erro inesperado:', error);
+      console.error('💥 Erro inesperado:', error);
     } finally {
       setLoading(false);
     }
@@ -57,7 +72,19 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
   // Realtime subscription para atualizar números quando houver mudanças
   useEffect(() => {
     const channel = supabase
-      .channel('transactions_changes')
+      .channel('numbers_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'raffle_numbers'
+        },
+        (payload) => {
+          console.log('🔄 Número atualizado em tempo real:', payload);
+          fetchSoldNumbers();
+        }
+      )
       .on(
         'postgres_changes',
         {
@@ -134,7 +161,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
@@ -144,28 +171,29 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
                 <ArrowLeft className="w-6 h-6 text-gray-600" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Escolha seus números</h1>
-                <p className="text-gray-600">R$ 100,00 por número • Máximo 10 números por pessoa</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Escolha seus números</h1>
+                <p className="text-sm sm:text-base text-gray-600">R$ 100,00 por número • Máximo 10 números por pessoa</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               {!user && (
                 <button
                   onClick={onAuthRequired}
-                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm"
                 >
                   <LogIn className="w-4 h-4" />
-                  <span>Fazer Login</span>
+                  <span className="hidden sm:inline">Fazer Login</span>
+                  <span className="sm:hidden">Login</span>
                 </button>
               )}
               
               <button
                 onClick={handleCartClick}
-                className="relative bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 shadow-lg flex items-center space-x-2"
+                className="relative bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 shadow-lg flex items-center space-x-2"
               >
                 <ShoppingCart className="w-5 h-5" />
-                <span>Carrinho</span>
+                <span className="hidden sm:inline">Carrinho</span>
                 {cartItems.length > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
                     {cartItems.length}
@@ -179,7 +207,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
 
       {/* Alerta de Login */}
       {!user && (
-        <div className="bg-blue-50 border border-blue-200 mx-6 mt-6 rounded-xl p-4">
+        <div className="bg-blue-50 border border-blue-200 mx-4 sm:mx-6 mt-6 rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <LogIn className="w-5 h-5 text-blue-600" />
@@ -192,7 +220,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
             </div>
             <button
               onClick={onAuthRequired}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
             >
               Entrar
             </button>
@@ -201,7 +229,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
       )}
 
       {/* Numbers Grid */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-8">
           <div className="flex flex-wrap gap-4 text-sm">
             <div className="flex items-center space-x-2">
@@ -219,17 +247,19 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
           </div>
         </div>
 
-        <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-13 gap-3">
+        {/* Grid otimizado para mobile */}
+        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-13 gap-3">
           {Array.from({ length: 130 }, (_, i) => i + 1).map((number) => (
             <button
               key={number}
               onClick={() => handleNumberClick(number)}
               disabled={isNumberSold(number)}
               className={`
-                aspect-square rounded-xl border-2 font-semibold text-sm transition-all duration-200
+                aspect-square rounded-xl border-2 font-semibold text-sm sm:text-base transition-all duration-200
                 ${getNumberButtonClass(number)}
-                ${!isNumberSold(number) && user ? 'hover:shadow-md' : ''}
+                ${!isNumberSold(number) && user ? 'hover:shadow-md active:scale-95' : ''}
                 ${!user ? 'opacity-50' : ''}
+                min-h-[3rem] sm:min-h-[3.5rem]
               `}
             >
               {number.toString().padStart(3, '0')}
@@ -238,24 +268,24 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
         </div>
 
         {/* Stats */}
-        <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border">
-            <div className="text-2xl font-bold text-blue-600">{130 - soldNumbers.length}</div>
-            <div className="text-sm text-gray-600">Números Disponíveis</div>
+        <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border">
+            <div className="text-xl sm:text-2xl font-bold text-blue-600">{130 - soldNumbers.length}</div>
+            <div className="text-xs sm:text-sm text-gray-600">Números Disponíveis</div>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border">
-            <div className="text-2xl font-bold text-red-600">{soldNumbers.length}</div>
-            <div className="text-sm text-gray-600">Números Vendidos</div>
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border">
+            <div className="text-xl sm:text-2xl font-bold text-red-600">{soldNumbers.length}</div>
+            <div className="text-xs sm:text-sm text-gray-600">Números Vendidos</div>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border">
-            <div className="text-2xl font-bold text-green-600">{cartItems.length}</div>
-            <div className="text-sm text-gray-600">No Carrinho</div>
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border">
+            <div className="text-xl sm:text-2xl font-bold text-green-600">{cartItems.length}</div>
+            <div className="text-xs sm:text-sm text-gray-600">No Carrinho</div>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border">
-            <div className="text-2xl font-bold text-purple-600">
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border">
+            <div className="text-xl sm:text-2xl font-bold text-purple-600">
               R$ {(cartItems.length * 100).toLocaleString('pt-BR')}
             </div>
-            <div className="text-sm text-gray-600">Total Selecionado</div>
+            <div className="text-xs sm:text-sm text-gray-600">Total Selecionado</div>
           </div>
         </div>
       </div>

@@ -6,12 +6,13 @@ import { useToast } from '@/hooks/use-toast';
 interface UsePaymentCheckProps {
   transactionId: string;
   onPaymentConfirmed: () => void;
-  onStartProcessing: () => void;
+  onStartProcessing: (transactionData?: any) => void;
 }
 
 export const usePaymentCheck = ({ transactionId, onPaymentConfirmed, onStartProcessing }: UsePaymentCheckProps) => {
   const { toast } = useToast();
   const [checkCount, setCheckCount] = useState(0);
+  const [transactionData, setTransactionData] = useState<any>(null);
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const hasConfirmed = useRef(false);
 
@@ -29,8 +30,11 @@ export const usePaymentCheck = ({ transactionId, onPaymentConfirmed, onStartProc
       setCheckCount(prev => prev + 1);
 
       if (transactions && transactions.length > 0 && !hasConfirmed.current) {
-        console.log('✅ Pagamento confirmado! Aguardando processamento completo...');
+        console.log('✅ Pagamento confirmado! Dados da transação:', transactions[0]);
         hasConfirmed.current = true;
+        
+        const transaction = transactions[0];
+        setTransactionData(transaction);
         
         if (checkIntervalRef.current) {
           clearInterval(checkIntervalRef.current);
@@ -39,10 +43,11 @@ export const usePaymentCheck = ({ transactionId, onPaymentConfirmed, onStartProc
         
         toast({
           title: "Pagamento aprovado!",
-          description: "Aguarde enquanto finalizamos o processamento...",
+          description: "Processando seus números da sorte...",
         });
         
-        onStartProcessing();
+        // Passar os dados da transação para o processamento
+        onStartProcessing(transaction);
       }
     } catch (error) {
       console.error('❌ Erro ao verificar status:', error);
@@ -50,15 +55,17 @@ export const usePaymentCheck = ({ transactionId, onPaymentConfirmed, onStartProc
   };
 
   const startChecking = () => {
-    // Primeira verificação após 8 segundos
+    console.log('🚀 Iniciando verificação de pagamento');
+    
+    // Primeira verificação após 3 segundos (mais rápido)
     const initialCheckTimeout = setTimeout(() => {
       checkPaymentStatus();
       
-      // Configurar intervalo progressivo
+      // Configurar intervalo mais frequente
       checkIntervalRef.current = setInterval(() => {
         checkPaymentStatus();
-      }, checkCount < 3 ? 8000 : 5000);
-    }, 8000);
+      }, 3000); // Verificar a cada 3 segundos
+    }, 3000);
 
     return () => {
       clearTimeout(initialCheckTimeout);
@@ -70,6 +77,7 @@ export const usePaymentCheck = ({ transactionId, onPaymentConfirmed, onStartProc
   };
 
   const stopChecking = () => {
+    console.log('⏸️ Parando verificação de pagamento');
     if (checkIntervalRef.current) {
       clearInterval(checkIntervalRef.current);
       checkIntervalRef.current = null;
@@ -78,6 +86,7 @@ export const usePaymentCheck = ({ transactionId, onPaymentConfirmed, onStartProc
 
   return {
     checkCount,
+    transactionData,
     startChecking,
     stopChecking,
     hasConfirmed: hasConfirmed.current

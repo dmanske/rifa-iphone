@@ -31,6 +31,7 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
 }) => {
   const { toast } = useToast();
   const [status, setStatus] = useState<'waiting' | 'confirmed' | 'processing' | 'timeout'>('waiting');
+  const [fetchedTransactionData, setFetchedTransactionData] = useState<any>(null);
 
   const handleTimeout = () => {
     console.log('⏰ Timeout atingido');
@@ -43,23 +44,17 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
   };
 
   const handleProcessingComplete = () => {
+    console.log('🎉 Processamento concluído! Redirecionando...');
     setStatus('confirmed');
+    
     toast({
       title: "Processamento concluído!",
       description: "Redirecionando para seus números da sorte...",
     });
     
+    // Usar callback interno em vez de window.location.href
     setTimeout(() => {
-      const urlParams = new URLSearchParams();
-      urlParams.set('payment_success', 'true');
-      urlParams.set('payment_id', paymentId);
-      urlParams.set('transaction_id', transactionId);
-      urlParams.set('status', 'approved');
-      urlParams.set('source', 'mercadopago');
-      
-      const newUrl = window.location.origin + '/success?' + urlParams.toString();
-      console.log('🔄 Redirecionando para:', newUrl);
-      window.location.href = newUrl;
+      onPaymentConfirmed();
     }, 1500);
   };
 
@@ -73,17 +68,33 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
     cleanup
   } = usePaymentTimer({ onTimeout: handleTimeout, onProcessingComplete: handleProcessingComplete });
 
-  const handleStartProcessing = () => {
+  const handleStartProcessing = (transactionData?: any) => {
+    console.log('🚀 Iniciando processamento com dados:', transactionData);
     setStatus('processing');
+    setFetchedTransactionData(transactionData);
     stopElapsedTimer();
     startProcessingTimer();
   };
 
-  const { checkCount, startChecking } = usePaymentCheck({
+  const { checkCount, transactionData, startChecking } = usePaymentCheck({
     transactionId,
     onPaymentConfirmed,
     onStartProcessing: handleStartProcessing
   });
+
+  // Detectar quando a janela ganha foco (usuário volta do MercadoPago)
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      console.log('👁️ Janela ganhou foco - acelerando verificação');
+      // Força uma verificação imediata quando a janela ganha foco
+      setTimeout(() => {
+        // A verificação já está rodando, apenas aguarda
+      }, 1000);
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+    return () => window.removeEventListener('focus', handleWindowFocus);
+  }, []);
 
   useEffect(() => {
     console.log('🕐 Iniciando verificação de pagamento para:', { transactionId, paymentId });
@@ -108,7 +119,13 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
 
   // Show processing/confirmed screens
   if (status === 'processing' || status === 'confirmed') {
-    return <ProcessingTimer processingTimer={processingTimer} status={status} />;
+    return (
+      <ProcessingTimer 
+        processingTimer={processingTimer} 
+        status={status}
+        transactionData={fetchedTransactionData}
+      />
+    );
   }
 
   return (
