@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, Download, Home, Loader2, MessageCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -27,10 +26,15 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
         const collectionStatus = urlParams.get('collection_status'); // MercadoPago
         const preferenceId = urlParams.get('preference_id'); // MercadoPago
         const status = urlParams.get('status'); // MercadoPago
+        const hasPaymentSuccess = urlParams.get('payment_success') === 'true'; // MercadoPago
+        const hasPaymentPending = urlParams.get('payment_pending') === 'true'; // MercadoPago
 
-        console.log('PaymentSuccess - Parâmetros:', { sessionId, paymentId, collectionStatus, preferenceId, status });
+        console.log('PaymentSuccess - Parâmetros:', { 
+          sessionId, paymentId, collectionStatus, preferenceId, status, 
+          hasPaymentSuccess, hasPaymentPending 
+        });
 
-                // Verificar se é Stripe ou MercadoPago
+        // Verificar se é Stripe ou MercadoPago
         if (sessionId) {
           // STRIPE - processo original
           console.log('Confirming payment with session_id:', sessionId);
@@ -97,17 +101,42 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
             throw new Error('Dados da compra não encontrados');
           }
 
-        } else if (paymentId && preferenceId) {
+        } else if (paymentId || preferenceId || hasPaymentSuccess || hasPaymentPending) {
           // MERCADOPAGO
-          console.log('Processing MercadoPago payment:', { paymentId, status, collectionStatus });
+          console.log('🔍 Processando MercadoPago payment:', { paymentId, status, collectionStatus, hasPaymentSuccess, hasPaymentPending });
 
-          if (status === 'pending' || collectionStatus === 'pending') {
+          // 🔧 MELHORAR: Verificar transações no banco para pegar os dados
+          let transactionData = null;
+          
+          // Se temos preference_id ou payment_id, buscar a transação
+          if (preferenceId || paymentId) {
+            console.log('🔍 Buscando transação no banco...');
+            
+            const { data: transactions, error: txError } = await supabase
+              .from('transactions')
+              .select('*')
+              .or(`payment_id.eq.${preferenceId || paymentId},payment_id.eq.${paymentId || preferenceId}`)
+              .eq('status', 'pago')
+              .order('created_at', { ascending: false })
+              .limit(1);
+
+            if (!txError && transactions && transactions.length > 0) {
+              transactionData = transactions[0];
+              console.log('✅ Transação encontrada no banco:', transactionData);
+            } else {
+              console.log('⚠️ Transação não encontrada ou ainda não processada:', txError);
+            }
+          }
+          
+          if (status === 'pending' || collectionStatus === 'pending' || hasPaymentPending) {
             // Pagamento PIX pendente - mostrar informações
+            console.log('💳 Status: Pendente');
             setPurchaseData({
               status: 'pending',
               payment_id: paymentId,
               preference_id: preferenceId,
-              metodo_pagamento: 'pix'
+              metodo_pagamento: 'pix',
+              ...transactionData
             });
             clearCart();
             
@@ -116,33 +145,50 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
               description: "Aguardando confirmação do pagamento.",
               variant: "default"
             });
+          } else if (status === 'approved' || collectionStatus === 'approved' || hasPaymentSuccess || transactionData) {
+            // Pagamento aprovado ou transação confirmada no banco
+            console.log('✅ Status: Aprovado');
+            setPurchaseData({
+              status: 'approved',
+              payment_id: paymentId,
+              preference_id: preferenceId,
+              metodo_pagamento: transactionData?.metodo_pagamento || 'pix',
+              numeros: transactionData?.numeros_comprados || [],
+              valor_pago: transactionData?.valor_total || 0,
+              nome: transactionData?.nome || '',
+              email: transactionData?.email || '',
+              ...transactionData
+            });
+            clearCart();
+            
+            // Atualizar números em tempo real
+            await refreshNumbers();
+            
+            toast({
+              title: "Pagamento aprovado!",
+              description: "Seus números foram reservados com sucesso.",
+            });
           } else {
             // Outros status do MercadoPago
+            console.log('⚠️ Status:', status || 'unknown');
             setPurchaseData({
-              status: status,
+              status: status || 'unknown',
               payment_id: paymentId,
               preference_id: preferenceId,
               error: status !== 'approved'
             });
             clearCart();
             
-            if (status === 'approved') {
-              toast({
-                title: "Pagamento aprovado!",
-                description: "Seus números foram reservados com sucesso.",
-              });
-            } else {
-              toast({
-                title: "Status do pagamento",
-                description: `Status: ${status}`,
-                variant: "default"
-              });
-            }
+            toast({
+              title: "Status do pagamento",
+              description: `Status: ${status || 'Verificando...'}`,
+              variant: "default"
+            });
           }
 
         } else {
           // Nenhum parâmetro válido encontrado
-          console.log('No valid payment parameters found, redirecting to home');
+          console.log('❌ No valid payment parameters found, redirecting to home');
           setIsConfirming(false);
           toast({
             title: "Erro",
@@ -154,7 +200,7 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
         }
 
       } catch (error) {
-        console.error('Erro ao confirmar pagamento:', error);
+        console.error('❌ Erro ao confirmar pagamento:', error);
         toast({
           title: "Erro na confirmação",
           description: "Houve um problema ao confirmar seu pagamento. Seus números podem já estar reservados. Entre em contato conosco se necessário.",

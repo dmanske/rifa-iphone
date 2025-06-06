@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
 import { useNumbers } from '../context/NumbersContext';
@@ -10,10 +9,11 @@ interface NumberGridProps {
 }
 
 const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
-  const { numbers, loading, reservedNumbers, reserveNumbers, releaseReservations, timeRemaining } = useNumbers();
+  const { numbers, loading, reservedNumbers, reserveNumbers, releaseReservations, timeRemaining, refreshNumbers } = useNumbers();
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
+  const [isReleasing, setIsReleasing] = useState(false);
 
   useEffect(() => {
     onNumbersSelected(selectedNumbers);
@@ -87,20 +87,36 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
   };
 
   const handleReleaseReservations = async () => {
+    if (isReleasing) return; // Evitar múltiplos cliques
+    
+    setIsReleasing(true);
     try {
+      console.log('🔄 Iniciando liberação de reservas...');
+      
+      // Chamar a função de liberar reservas
       await releaseReservations();
+      
+      // Limpar números selecionados
       setSelectedNumbers([]);
+      
+      // Forçar atualização dos números
+      await refreshNumbers();
+      
+      console.log('✅ Reservas liberadas com sucesso');
+      
       toast({
         title: "Reservas liberadas",
         description: "Suas reservas foram liberadas com sucesso",
       });
     } catch (error) {
-      console.error('Erro ao liberar reservas:', error);
+      console.error('❌ Erro ao liberar reservas:', error);
       toast({
         title: "Erro",
         description: "Erro ao liberar reservas. Tente novamente.",
         variant: "destructive"
       });
+    } finally {
+      setIsReleasing(false);
     }
   };
 
@@ -170,9 +186,14 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
             </div>
             <button
               onClick={handleReleaseReservations}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              disabled={isReleasing}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isReleasing 
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                  : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+              }`}
             >
-              Liberar Reservas
+              {isReleasing ? 'Liberando...' : 'Liberar Reservas'}
             </button>
           </div>
         </div>

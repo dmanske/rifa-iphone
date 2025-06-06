@@ -45,12 +45,15 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const fetchNumbers = useCallback(async () => {
     try {
+      console.log('📊 Buscando números...');
       const { data, error } = await supabase
         .from('raffle_numbers')
         .select('*')
         .order('numero');
 
       if (error) throw error;
+      
+      console.log('📊 Números carregados:', data?.length);
       setNumbers(data || []);
 
       // Buscar números reservados pelo usuário atual
@@ -58,6 +61,8 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const userReserved = data?.filter(n => 
           n.status === 'reservado' && n.reserved_by === user.id
         ).map(n => n.numero) || [];
+        
+        console.log('🔒 Números reservados pelo usuário:', userReserved);
         setReservedNumbers(userReserved);
 
         // Calcular tempo restante da reserva
@@ -77,7 +82,7 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
     } catch (error) {
-      console.error('Erro ao buscar números:', error);
+      console.error('❌ Erro ao buscar números:', error);
     } finally {
       setLoading(false);
     }
@@ -94,6 +99,7 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     try {
+      console.log('🔒 Reservando números:', numeros);
       const { data, error } = await supabase.rpc('reserve_numbers', {
         _user_id: user.id,
         _numeros: numeros,
@@ -127,7 +133,7 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return false;
       }
     } catch (error) {
-      console.error('Erro ao reservar números:', error);
+      console.error('❌ Erro ao reservar números:', error);
       toast({
         title: "Erro",
         description: "Erro ao reservar números. Tente novamente.",
@@ -138,9 +144,15 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const releaseReservations = async () => {
-    if (!user || reservedNumbers.length === 0) return;
+    if (!user || reservedNumbers.length === 0) {
+      console.log('⚠️ Nenhuma reserva para liberar');
+      return;
+    }
 
     try {
+      console.log('🔓 Liberando reservas para usuário:', user.id);
+      console.log('🔓 Números reservados:', reservedNumbers);
+      
       // Liberar reservas (voltar status para disponível)
       const { error } = await supabase
         .from('raffle_numbers')
@@ -154,27 +166,30 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .eq('reserved_by', user.id)
         .eq('status', 'reservado');
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro ao liberar reservas:', error);
+        throw error;
+      }
 
+      console.log('✅ Reservas liberadas no banco');
+      
+      // Limpar estado local imediatamente
       setReservedNumbers([]);
       setTimeRemaining(0);
+      
+      // Atualizar números do banco
       await fetchNumbers();
       
-      toast({
-        title: "Reservas liberadas",
-        description: "Suas reservas foram liberadas com sucesso",
-      });
+      console.log('✅ Estado atualizado');
+      
     } catch (error) {
-      console.error('Erro ao liberar reservas:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao liberar reservas. Tente novamente.",
-        variant: "destructive"
-      });
+      console.error('❌ Erro ao liberar reservas:', error);
+      throw error;
     }
   };
 
   const refreshNumbers = useCallback(async () => {
+    console.log('🔄 Atualizando números...');
     await fetchNumbers();
   }, [fetchNumbers]);
 
@@ -185,6 +200,7 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setTimeRemaining(prev => {
           if (prev <= 1) {
             // Tempo expirado, atualizar números
+            console.log('⏰ Tempo de reserva expirado');
             fetchNumbers();
             return 0;
           }
@@ -226,8 +242,8 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
           schema: 'public',
           table: 'raffle_numbers'
         },
-        () => {
-          console.log('Números atualizados em tempo real');
+        (payload) => {
+          console.log('🔄 Números atualizados em tempo real:', payload);
           fetchNumbers();
         }
       )
@@ -239,8 +255,8 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
           table: 'transactions',
           filter: 'status=eq.pago'
         },
-        () => {
-          console.log('Transação confirmada - atualizando números');
+        (payload) => {
+          console.log('💰 Transação confirmada - atualizando números:', payload);
           fetchNumbers();
         }
       )
