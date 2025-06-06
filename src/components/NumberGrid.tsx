@@ -39,7 +39,7 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
     }
 
     if (selectedNumbers.includes(numero)) {
-      setSelectedNumbers(prev => prev.filter(n => n !== numero));
+      setSelectedNumbers(selectedNumbers.filter(n => n !== numero));
     } else {
       if (selectedNumbers.length >= 10) {
         toast({
@@ -49,7 +49,7 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
         });
         return;
       }
-      setSelectedNumbers(prev => [...prev, numero]);
+      setSelectedNumbers([...selectedNumbers, numero]);
     }
   };
 
