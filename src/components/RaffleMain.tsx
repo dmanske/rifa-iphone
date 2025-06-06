@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Gift, Users, Clock, Shield, User, Settings } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -35,8 +34,7 @@ const RaffleMain: React.FC<RaffleMainProps> = ({ onShowAuth }) => {
   if (showCheckout) {
     return (
       <RaffleCheckout 
-        onBack={() => setShowCheckout(false)}
-        selectedNumbers={selectedNumbers.length > 0 ? selectedNumbers : reservedNumbers}
+        onClose={() => setShowCheckout(false)}
       />
     );
   }
