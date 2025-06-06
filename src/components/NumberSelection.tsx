@@ -146,6 +146,19 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
     return 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:scale-105 cursor-pointer';
   };
 
+  // Organizar números em linhas de 10 para layout responsivo
+  const organizeNumbersInRows = () => {
+    const rows = [];
+    for (let i = 1; i <= 130; i += 10) {
+      const row = [];
+      for (let j = i; j < i + 10 && j <= 130; j++) {
+        row.push(j);
+      }
+      rows.push(row);
+    }
+    return rows;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -156,6 +169,8 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
       </div>
     );
   }
+
+  const numberRows = organizeNumbersInRows();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -228,7 +243,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
         </div>
       )}
 
-      {/* Numbers Grid */}
+      {/* Numbers Grid - Layout em linhas responsivo */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-8">
           <div className="flex flex-wrap gap-4 text-sm">
@@ -247,23 +262,37 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
           </div>
         </div>
 
-        {/* Grid otimizado para mobile */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-13 gap-3">
-          {Array.from({ length: 130 }, (_, i) => i + 1).map((number) => (
-            <button
-              key={number}
-              onClick={() => handleNumberClick(number)}
-              disabled={isNumberSold(number)}
-              className={`
-                aspect-square rounded-xl border-2 font-semibold text-sm sm:text-base transition-all duration-200
-                ${getNumberButtonClass(number)}
-                ${!isNumberSold(number) && user ? 'hover:shadow-md active:scale-95' : ''}
-                ${!user ? 'opacity-50' : ''}
-                min-h-[3rem] sm:min-h-[3.5rem]
-              `}
-            >
-              {number.toString().padStart(3, '0')}
-            </button>
+        {/* Grid otimizado para mobile - Layout em linhas */}
+        <div className="space-y-4">
+          {numberRows.map((row, rowIndex) => (
+            <div key={rowIndex} className="bg-white rounded-xl shadow-sm border p-4">
+              {/* Header da linha mostrando a faixa */}
+              <div className="mb-3 text-center">
+                <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
+                  {row[0].toString().padStart(3, '0')} - {row[row.length - 1].toString().padStart(3, '0')}
+                </span>
+              </div>
+              
+              {/* Números da linha */}
+              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+                {row.map((number) => (
+                  <button
+                    key={number}
+                    onClick={() => handleNumberClick(number)}
+                    disabled={isNumberSold(number)}
+                    className={`
+                      aspect-square rounded-lg border-2 font-bold text-sm transition-all duration-200
+                      ${getNumberButtonClass(number)}
+                      ${!isNumberSold(number) && user ? 'hover:shadow-md active:scale-95' : ''}
+                      ${!user ? 'opacity-50' : ''}
+                      min-h-[3rem] flex items-center justify-center
+                    `}
+                  >
+                    {number.toString().padStart(3, '0')}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
 

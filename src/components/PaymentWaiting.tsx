@@ -52,7 +52,7 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
       description: "Redirecionando para seus números da sorte...",
     });
     
-    // Usar callback interno em vez de window.location.href
+    // Usar callback interno - não mais window.location.href
     setTimeout(() => {
       onPaymentConfirmed();
     }, 1500);
@@ -86,10 +86,7 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
   useEffect(() => {
     const handleWindowFocus = () => {
       console.log('👁️ Janela ganhou foco - acelerando verificação');
-      // Força uma verificação imediata quando a janela ganha foco
-      setTimeout(() => {
-        // A verificação já está rodando, apenas aguarda
-      }, 1000);
+      // A verificação já está rodando, apenas detecta o retorno
     };
 
     window.addEventListener('focus', handleWindowFocus);
