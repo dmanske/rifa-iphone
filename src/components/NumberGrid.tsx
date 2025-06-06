@@ -38,15 +38,6 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
       return;
     }
 
-    if (numberData?.status === 'reservado' && numberData.reserved_by !== user.id) {
-      toast({
-        title: "Número reservado",
-        description: "Este número está reservado por outro usuário",
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (selectedNumbers.includes(numero)) {
       setSelectedNumbers(prev => prev.filter(n => n !== numero));
     } else {
@@ -81,13 +72,6 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
       return 'sold';
     }
     
-    if (numberData?.status === 'reservado') {
-      if (user && numberData.reserved_by === user.id) {
-        return 'reserved-own';
-      }
-      return 'reserved-other';
-    }
-    
     return 'available';
   };
 
@@ -100,10 +84,6 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
         return `${baseClasses} bg-blue-600 text-white border-2 border-blue-800`;
       case 'sold':
         return `${baseClasses} bg-red-500 text-white cursor-not-allowed opacity-75`;
-      case 'reserved-own':
-        return `${baseClasses} bg-green-500 text-white border-2 border-green-700`;
-      case 'reserved-other':
-        return `${baseClasses} bg-yellow-500 text-white cursor-not-allowed opacity-75`;
       default:
         return `${baseClasses} bg-white text-gray-900 border-2 border-gray-300 hover:border-blue-500`;
     }
@@ -148,7 +128,7 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
             key={numero}
             onClick={() => handleNumberClick(numero)}
             className={getNumberClasses(numero)}
-            disabled={!user || getNumberStatus(numero) === 'sold' || getNumberStatus(numero) === 'reserved-other'}
+            disabled={!user || getNumberStatus(numero) === 'sold'}
           >
             {numero.toString().padStart(3, '0')}
           </button>
@@ -158,7 +138,7 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
       {/* Legend */}
       <div className="bg-gray-50 rounded-xl p-4">
         <h3 className="font-semibold text-gray-900 mb-3">Legenda:</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 bg-white border-2 border-gray-300 rounded"></div>
             <span>Disponível</span>
@@ -166,10 +146,6 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 bg-blue-600 rounded"></div>
             <span>Selecionado</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-green-500 rounded"></div>
-            <span>Seus Reservados</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 bg-red-500 rounded"></div>

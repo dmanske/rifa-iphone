@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, CreditCard, Smartphone, Mail, User, Phone, CheckCircle, Loader2, Clock } from 'lucide-react';
+import { ArrowLeft, CreditCard, Smartphone, Mail, User, Phone, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useNumbers } from '../context/NumbersContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +13,6 @@ interface RaffleCheckoutProps {
 
 const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers }) => {
   const { user, profile } = useAuth();
-  const { timeRemaining } = useNumbers();
   const { toast } = useToast();
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao'>('pix');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,12 +31,6 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
       }));
     }
   }, [profile]);
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
 
   const basePrice = selectedNumbers.length * 100;
   const pixTotal = basePrice;
@@ -233,23 +227,6 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
       </div>
 
       <div className="max-w-3xl mx-auto px-6 py-8">
-        {/* Timer de reserva */}
-        {timeRemaining > 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-            <div className="flex items-center space-x-3">
-              <Clock className="w-5 h-5 text-yellow-600" />
-              <div>
-                <h3 className="font-semibold text-yellow-800">
-                  Números Reservados
-                </h3>
-                <p className="text-sm text-yellow-700">
-                  Tempo restante: {formatTime(timeRemaining)}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Números selecionados */}
           <div className="bg-white rounded-xl shadow-sm border p-6">

@@ -18,7 +18,7 @@ interface NumbersContextType {
   numbers: RaffleNumber[];
   loading: boolean;
   selectedNumbers: number[];
-  setSelectedNumbers: (numbers: number[]) => void;
+  setSelectedNumbers: React.Dispatch<React.SetStateAction<number[]>>;
   clearSelectedNumbers: () => void;
   refreshNumbers: () => Promise<void>;
 }
