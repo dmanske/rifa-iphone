@@ -26,6 +26,7 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
   const { toast } = useToast();
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [status, setStatus] = useState<'waiting' | 'confirmed' | 'timeout'>('waiting');
+  const [checkCount, setCheckCount] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const hasConfirmed = useRef(false);
@@ -41,7 +42,7 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
     // Verificação periódica do status do pagamento
     const checkPaymentStatus = async () => {
       try {
-        console.log('🔍 Verificando status do pagamento...');
+        console.log('🔍 Verificando status do pagamento... (check #' + (checkCount + 1) + ')');
         
         const { data: transactions } = await supabase
           .from('transactions')
@@ -49,6 +50,8 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
           .eq('id', transactionId)
           .eq('status', 'pago')
           .limit(1);
+
+        setCheckCount(prev => prev + 1);
 
         if (transactions && transactions.length > 0 && !hasConfirmed.current) {
           console.log('✅ Pagamento confirmado! Redirecionando...');
@@ -74,11 +77,19 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
       }
     };
 
-    // Verificar imediatamente
-    checkPaymentStatus();
-
-    // Verificar a cada 5 segundos
-    checkIntervalRef.current = setInterval(checkPaymentStatus, 5000);
+    // Primeira verificação após 8 segundos (dar tempo para processamento)
+    const initialCheckTimeout = setTimeout(() => {
+      checkPaymentStatus();
+      
+      // Configurar intervalo progressivo
+      const setupProgressiveInterval = () => {
+        checkIntervalRef.current = setInterval(() => {
+          checkPaymentStatus();
+        }, checkCount < 3 ? 8000 : 5000); // Primeiros 3 checks: 8s, depois: 5s
+      };
+      
+      setupProgressiveInterval();
+    }, 8000);
 
     // Timeout após 10 minutos
     const timeoutId = setTimeout(() => {
@@ -100,14 +111,24 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
+      clearTimeout(initialCheckTimeout);
       clearTimeout(timeoutId);
     };
-  }, [transactionId, paymentId, onPaymentConfirmed, toast]);
+  }, [transactionId, paymentId, onPaymentConfirmed, toast, checkCount]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getProcessingMessage = () => {
+    if (timeElapsed < 10) {
+      return "Processando pagamento... Aguarde alguns segundos.";
+    }
+    return paymentMethod === 'pix' 
+      ? 'Aguardando confirmação do PIX...'
+      : 'Processando pagamento no cartão...';
   };
 
   if (status === 'confirmed') {
@@ -169,10 +190,7 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
               </h2>
               
               <p className="text-gray-600 mb-4">
-                {paymentMethod === 'pix' 
-                  ? 'Escaneie o QR Code ou cole o código PIX para efetuar o pagamento'
-                  : 'Aguardando confirmação do cartão de crédito'
-                }
+                {getProcessingMessage()}
               </p>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -181,6 +199,17 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
                   <span className="font-semibold">Tempo decorrido: {formatTime(timeElapsed)}</span>
                 </div>
               </div>
+
+              {timeElapsed < 15 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  <p className="text-yellow-800 font-medium">
+                    ⏳ Processando transação...
+                  </p>
+                  <p className="text-yellow-700 text-sm mt-1">
+                    Os primeiros segundos são necessários para processar o pagamento
+                  </p>
+                </div>
+              )}
 
               {status === 'timeout' && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
@@ -199,6 +228,7 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
                 </p>
                 <p className="text-green-700 text-sm">
                   Esta página será atualizada automaticamente quando o pagamento for confirmado
+                  {checkCount > 0 && ` (verificação #${checkCount})`}
                 </p>
               </div>
             </div>
@@ -262,7 +292,7 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
                 <p>• Vá em PIX → Ler QR Code</p>
                 <p>• Escaneie o código na tela do MercadoPago</p>
                 <p>• Confirme o pagamento</p>
-                <p>• Aguarde a confirmação (instantânea)</p>
+                <p>• Aguarde a confirmação (pode levar alguns segundos)</p>
               </div>
             </div>
           )}
