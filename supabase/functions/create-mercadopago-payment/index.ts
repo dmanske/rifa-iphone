@@ -131,10 +131,10 @@ serve(async (req) => {
     // 6. Criar preferência MercadoPago
     const origin = req.headers.get("origin") || "https://rifaiphonecursor.vercel.app";
     
-    // 🔧 CORRIGIR URLs - sempre voltar para página principal
-    const successUrl = `${origin}/?payment_success=true`;
-    const failureUrl = `${origin}/`;  // 🔑 SEMPRE PÁGINA PRINCIPAL
-    const pendingUrl = `${origin}/?payment_pending=true`;
+    // URLs otimizadas - sempre redirecionar para home
+    const successUrl = `${origin}/?payment_success=true&source=mercadopago`;
+    const failureUrl = `${origin}/?payment_failed=true&source=mercadopago`;
+    const pendingUrl = `${origin}/?payment_pending=true&source=mercadopago`;
     
     console.log("URLs configuradas:", { origin, successUrl, failureUrl, pendingUrl });
     console.log("📍 Ambiente detectado:", origin.includes('localhost') ? 'DESENVOLVIMENTO' : 'PRODUÇÃO');
@@ -205,7 +205,7 @@ serve(async (req) => {
       },
       back_urls: {
         success: successUrl,
-        failure: failureUrl,  // 🔑 SEMPRE PÁGINA PRINCIPAL
+        failure: failureUrl,
         pending: pendingUrl
       },
       auto_return: "approved",

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { CheckCircle, Download, Home, Loader2, MessageCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useNumbers } from '../context/NumbersContext';
@@ -15,10 +15,18 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
   const { toast } = useToast();
   const [isConfirming, setIsConfirming] = useState(true);
   const [purchaseData, setPurchaseData] = useState<any>(null);
+  const hasProcessed = useRef(false);
+  const checkInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Evitar reprocessamento
+    if (hasProcessed.current) return;
+
     const confirmPayment = async () => {
       try {
+        hasProcessed.current = true;
+        console.log('🔍 PaymentSuccess - Confirmando pagamento único...');
+
         // Buscar parâmetros da URL
         const urlParams = new URLSearchParams(window.location.search);
         const sessionId = urlParams.get('session_id'); // Stripe
@@ -70,7 +78,7 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
                 setPurchaseData(retryData.purchase);
                 clearCart();
                 
-                // Atualizar números em tempo real
+                // Atualizar números apenas uma vez
                 await refreshNumbers();
                 
                 toast({
@@ -90,7 +98,7 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
             setPurchaseData(data.purchase);
             clearCart();
             
-            // Atualizar números em tempo real
+            // Atualizar números apenas uma vez
             await refreshNumbers();
             
             toast({
@@ -105,7 +113,7 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
           // MERCADOPAGO
           console.log('🔍 Processando MercadoPago payment:', { paymentId, status, collectionStatus, hasPaymentSuccess, hasPaymentPending });
 
-          // 🔧 PRIORIZAR: Verificar transações no banco primeiro
+          // Verificar transações no banco primeiro
           let transactionData = null;
           
           if (preferenceId || paymentId) {
@@ -122,7 +130,7 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
               transactionData = transactions[0];
               console.log('✅ Transação encontrada no banco:', transactionData);
               
-              // 🔑 SE A TRANSAÇÃO NO BANCO ESTÁ PAGA, MOSTRAR COMO APROVADO
+              // SE A TRANSAÇÃO NO BANCO ESTÁ PAGA, MOSTRAR COMO APROVADO
               if (transactionData.status === 'pago') {
                 console.log('✅ Transação já confirmada no banco - Status: PAGO');
                 setPurchaseData({
@@ -138,7 +146,7 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
                 });
                 clearCart();
                 
-                // Atualizar números em tempo real
+                // Atualizar números apenas uma vez
                 await refreshNumbers();
                 
                 toast({
@@ -154,8 +162,8 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
           
           // Se não encontrou transação paga no banco, verificar status dos parâmetros
           if (status === 'pending' || collectionStatus === 'pending' || hasPaymentPending) {
-            // Pagamento PIX pendente - verificar periodicamente
-            console.log('💳 Status: Pendente - iniciando verificação periódica');
+            // Pagamento PIX pendente - mas NÃO fazer polling aqui
+            console.log('💳 Status: Pendente - mostrando status final');
             setPurchaseData({
               status: 'pending',
               payment_id: paymentId,
@@ -165,48 +173,9 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
             });
             clearCart();
             
-            // Verificação periódica para PIX pendente
-            const checkInterval = setInterval(async () => {
-              console.log('🔄 Verificando status do pagamento...');
-              
-              const { data: updatedTransactions } = await supabase
-                .from('transactions')
-                .select('*')
-                .or(`payment_id.eq.${preferenceId || paymentId},payment_id.eq.${paymentId || preferenceId}`)
-                .eq('status', 'pago')
-                .limit(1);
-
-              if (updatedTransactions && updatedTransactions.length > 0) {
-                console.log('✅ Pagamento confirmado! Atualizando interface...');
-                clearInterval(checkInterval);
-                
-                setPurchaseData({
-                  status: 'approved',
-                  payment_id: paymentId,
-                  preference_id: preferenceId,
-                  metodo_pagamento: updatedTransactions[0].metodo_pagamento || 'pix',
-                  numeros: updatedTransactions[0].numeros_comprados || [],
-                  valor_pago: updatedTransactions[0].valor_total || 0,
-                  nome: updatedTransactions[0].nome || '',
-                  email: updatedTransactions[0].email || '',
-                  ...updatedTransactions[0]
-                });
-                
-                await refreshNumbers();
-                
-                toast({
-                  title: "Pagamento aprovado!",
-                  description: "Seus números foram confirmados com sucesso.",
-                });
-              }
-            }, 10000); // Verificar a cada 10 segundos
-
-            // Limpar interval após 5 minutos
-            setTimeout(() => clearInterval(checkInterval), 300000);
-            
             toast({
-              title: "Pagamento PIX iniciado!",
-              description: "Aguardando confirmação do pagamento. Verificando automaticamente...",
+              title: "Pagamento PIX processando!",
+              description: "Seu pagamento está sendo processado. Esta página será atualizada automaticamente.",
               variant: "default"
             });
           } else if (status === 'approved' || collectionStatus === 'approved' || hasPaymentSuccess) {
@@ -225,7 +194,7 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
             });
             clearCart();
             
-            // Atualizar números em tempo real
+            // Atualizar números apenas uma vez
             await refreshNumbers();
             
             toast({
@@ -284,7 +253,15 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
     };
 
     confirmPayment();
-  }, [clearCart, refreshNumbers, toast, onGoHome]);
+
+    // Cleanup function
+    return () => {
+      if (checkInterval.current) {
+        clearInterval(checkInterval.current);
+        checkInterval.current = null;
+      }
+    };
+  }, []); // Dependências vazias para executar apenas uma vez
 
   if (isConfirming) {
     return (

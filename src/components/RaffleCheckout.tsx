@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CreditCard, Smartphone, Mail, User, Phone, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useNumbers } from '../context/NumbersContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import PaymentWaiting from './PaymentWaiting';
 
 interface RaffleCheckoutProps {
   onBack: () => void;
@@ -16,6 +16,12 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
   const { toast } = useToast();
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao'>('pix');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showPaymentWaiting, setShowPaymentWaiting] = useState(false);
+  const [paymentData, setPaymentData] = useState<{
+    transactionId: string;
+    paymentId: string;
+    paymentMethod: 'pix' | 'cartao';
+  } | null>(null);
   const [formData, setFormData] = useState({
     name: profile?.full_name || '',
     email: user?.email || '',
@@ -42,6 +48,12 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
       ...prev,
       [e.target.name]: e.target.value
     }));
+  };
+
+  const handlePaymentConfirmed = () => {
+    console.log('🎉 Pagamento confirmado! Redirecionando para home...');
+    // Redirecionar para home com parâmetros de sucesso
+    window.location.href = '/?payment_success=true';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,42 +113,6 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
 
       console.log(`Processando pagamento via ${providerName}...`);
 
-      // TESTE DIRETO - para debug
-      if (functionName === 'create-mercadopago-payment') {
-        console.log("🧪 TESTE DIRETO com fetch...");
-        try {
-          const directResponse = await fetch(`https://pwhicfgtakcpiedtdiqn.supabase.co/functions/v1/${functionName}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            },
-            body: JSON.stringify({
-              numeros: selectedNumbers,
-              metodo_pagamento: paymentMethod,
-              nome: formData.name,
-              email: formData.email,
-              telefone: formData.phone,
-              user_id: user.id,
-            })
-          });
-          
-          const directData = await directResponse.text();
-          console.log("📤 Status direto:", directResponse.status);
-          console.log("📦 Resposta direta:", directData);
-          
-          if (directResponse.ok) {
-            const jsonData = JSON.parse(directData);
-            if (jsonData.url) {
-              window.location.href = jsonData.url;
-              return;
-            }
-          }
-        } catch (directError) {
-          console.error("❌ Erro no teste direto:", directError);
-        }
-      }
-
       // Criar sessão de checkout
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: {
@@ -151,7 +127,6 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
 
       if (error) {
         console.error(`Erro na função ${functionName}:`, error);
-        console.error("Detalhes do erro:", data); // Mostrar dados da resposta também
         throw new Error(error.message || `Erro ao processar pagamento via ${providerName}`);
       }
 
@@ -159,21 +134,32 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
         throw new Error('URL de pagamento não recebida');
       }
 
-      console.log(`Redirecionando para ${providerName}:`, data.url);
+      console.log(`✅ Sessão criada com sucesso:`, data);
 
-      // Redirecionar para o checkout (MercadoPago ou Stripe)
-      window.location.href = data.url;
+      if (paymentMethod === 'pix') {
+        // Para PIX, salvar dados e mostrar tela de aguardo
+        setPaymentData({
+          transactionId: data.transaction_id,
+          paymentId: data.payment_id,
+          paymentMethod: paymentMethod
+        });
+        setShowPaymentWaiting(true);
+        
+        // Abrir MercadoPago em nova aba
+        window.open(data.url, '_blank');
+        
+        toast({
+          title: "PIX criado com sucesso!",
+          description: "Complete o pagamento na nova aba e aguarde a confirmação automática.",
+        });
+      } else {
+        // Para cartão, redirecionar diretamente
+        console.log(`Redirecionando para ${providerName}:`, data.url);
+        window.location.href = data.url;
+      }
 
     } catch (error) {
       console.error('Erro no checkout:', error);
-      console.error('Dados enviados:', {
-        numeros: selectedNumbers,
-        metodo_pagamento: paymentMethod,
-        nome: formData.name,
-        email: formData.email,
-        telefone: formData.phone,
-        user_id: user.id,
-      });
       toast({
         title: "Erro no processamento",
         description: error instanceof Error ? error.message : "Houve um problema ao processar seu pagamento. Tente novamente.",
@@ -183,6 +169,24 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
       setIsProcessing(false);
     }
   };
+
+  // Se está aguardando pagamento, mostrar tela de aguardo
+  if (showPaymentWaiting && paymentData) {
+    return (
+      <PaymentWaiting
+        transactionId={paymentData.transactionId}
+        paymentId={paymentData.paymentId}
+        paymentMethod={paymentData.paymentMethod}
+        selectedNumbers={selectedNumbers}
+        totalAmount={finalTotal}
+        onPaymentConfirmed={handlePaymentConfirmed}
+        onBack={() => {
+          setShowPaymentWaiting(false);
+          setPaymentData(null);
+        }}
+      />
+    );
+  }
 
   if (!user) {
     return (
