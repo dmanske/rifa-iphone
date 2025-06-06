@@ -131,10 +131,10 @@ serve(async (req) => {
     // 6. Criar preferência MercadoPago
     const origin = req.headers.get("origin") || "https://rifaiphonecursor.vercel.app";
     
-    // 🔧 CORRIGIR URLs - usar rotas que existem no app
-    const successUrl = `${origin}/?payment_success=true`;  // Para página principal com parâmetro
-    const failureUrl = `${origin}/`;                       // Página inicial
-    const pendingUrl = `${origin}/?payment_pending=true`;  // Para PIX pendente
+    // 🔧 CORRIGIR URLs - sempre voltar para página principal
+    const successUrl = `${origin}/?payment_success=true`;
+    const failureUrl = `${origin}/`;  // 🔑 SEMPRE PÁGINA PRINCIPAL
+    const pendingUrl = `${origin}/?payment_pending=true`;
     
     console.log("URLs configuradas:", { origin, successUrl, failureUrl, pendingUrl });
     console.log("📍 Ambiente detectado:", origin.includes('localhost') ? 'DESENVOLVIMENTO' : 'PRODUÇÃO');
@@ -152,7 +152,7 @@ serve(async (req) => {
       .from('transactions')
       .insert({
         user_id: user_id,
-        payment_id: 'temp-' + Date.now(), // Temporário, será atualizado depois
+        payment_id: 'temp-' + Date.now(),
         numeros_comprados: numeros,
         valor_total: precoFinal,
         metodo_pagamento: metodo_pagamento,
@@ -205,11 +205,11 @@ serve(async (req) => {
       },
       back_urls: {
         success: successUrl,
-        failure: failureUrl,
-        pending: pendingUrl  // 🔧 Adicionar URL para PIX pendente
+        failure: failureUrl,  // 🔑 SEMPRE PÁGINA PRINCIPAL
+        pending: pendingUrl
       },
-      auto_return: "approved", // 🔧 Retornar automaticamente quando aprovado
-      external_reference: transaction.id, // 🔑 CRITICAL: ID da transação para o webhook
+      auto_return: "approved",
+      external_reference: transaction.id,
       metadata: {
         numeros: JSON.stringify(numeros),
         metodo_pagamento,
@@ -263,13 +263,12 @@ serve(async (req) => {
     const { error: updateError } = await supabaseService
       .from('transactions')
       .update({ 
-        payment_id: mpData.id // Atualizar com o ID real da preferência
+        payment_id: mpData.id
       })
       .eq('id', transaction.id);
 
     if (updateError) {
       console.error("⚠️ Erro ao atualizar payment_id:", updateError);
-      // Não falha aqui, continua
     }
 
     console.log("✅ Payment ID atualizado:", mpData.id);

@@ -13,17 +13,17 @@ interface RaffleMainProps {
 
 const RaffleMain: React.FC<RaffleMainProps> = ({ onShowAuth }) => {
   const { user, signOut, isOrganizer } = useAuth();
-  const { reservedNumbers } = useNumbers();
+  const { selectedNumbers } = useNumbers();
   const [showCheckout, setShowCheckout] = useState(false);
   const [showOrganizerPanel, setShowOrganizerPanel] = useState(false);
-  const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
+  const [checkoutNumbers, setCheckoutNumbers] = useState<number[]>([]);
 
   const handleNumbersSelected = (numbers: number[]) => {
-    setSelectedNumbers(numbers);
+    setCheckoutNumbers(numbers);
   };
 
   const handleShowCheckout = () => {
-    if (selectedNumbers.length > 0 || reservedNumbers.length > 0) {
+    if (selectedNumbers.length > 0) {
       setShowCheckout(true);
     }
   };
@@ -36,7 +36,7 @@ const RaffleMain: React.FC<RaffleMainProps> = ({ onShowAuth }) => {
     return (
       <RaffleCheckout 
         onBack={() => setShowCheckout(false)}
-        selectedNumbers={selectedNumbers.length > 0 ? selectedNumbers : reservedNumbers}
+        selectedNumbers={selectedNumbers}
       />
     );
   }
@@ -145,15 +145,13 @@ const RaffleMain: React.FC<RaffleMainProps> = ({ onShowAuth }) => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Action Card */}
-            {(selectedNumbers.length > 0 || reservedNumbers.length > 0) && (
+            {selectedNumbers.length > 0 && (
               <div className="bg-white rounded-2xl shadow-lg p-6">
                 <h4 className="font-bold text-gray-900 mb-4">Finalizar Compra</h4>
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span>Números selecionados:</span>
-                    <span className="font-medium">
-                      {selectedNumbers.length > 0 ? selectedNumbers.length : reservedNumbers.length}
-                    </span>
+                    <span className="font-medium">{selectedNumbers.length}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Valor por número:</span>
@@ -162,7 +160,7 @@ const RaffleMain: React.FC<RaffleMainProps> = ({ onShowAuth }) => {
                   <div className="border-t pt-3 flex justify-between font-bold">
                     <span>Total:</span>
                     <span className="text-green-600">
-                      R$ {((selectedNumbers.length > 0 ? selectedNumbers.length : reservedNumbers.length) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {(selectedNumbers.length * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <button
@@ -185,7 +183,7 @@ const RaffleMain: React.FC<RaffleMainProps> = ({ onShowAuth }) => {
                 </div>
                 <div className="flex items-start space-x-3">
                   <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">2</div>
-                  <p>Números ficam reservados por 10 minutos para você</p>
+                  <p>Selecione quantos números quiser (máx. 10 por vez)</p>
                 </div>
                 <div className="flex items-start space-x-3">
                   <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">3</div>

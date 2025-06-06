@@ -105,10 +105,9 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
           // MERCADOPAGO
           console.log('🔍 Processando MercadoPago payment:', { paymentId, status, collectionStatus, hasPaymentSuccess, hasPaymentPending });
 
-          // 🔧 MELHORAR: Verificar transações no banco para pegar os dados
+          // 🔧 PRIORIZAR: Verificar transações no banco primeiro
           let transactionData = null;
           
-          // Se temos preference_id ou payment_id, buscar a transação
           if (preferenceId || paymentId) {
             console.log('🔍 Buscando transação no banco...');
             
@@ -116,21 +115,47 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
               .from('transactions')
               .select('*')
               .or(`payment_id.eq.${preferenceId || paymentId},payment_id.eq.${paymentId || preferenceId}`)
-              .eq('status', 'pago')
               .order('created_at', { ascending: false })
               .limit(1);
 
             if (!txError && transactions && transactions.length > 0) {
               transactionData = transactions[0];
               console.log('✅ Transação encontrada no banco:', transactionData);
+              
+              // 🔑 SE A TRANSAÇÃO NO BANCO ESTÁ PAGA, MOSTRAR COMO APROVADO
+              if (transactionData.status === 'pago') {
+                console.log('✅ Transação já confirmada no banco - Status: PAGO');
+                setPurchaseData({
+                  status: 'approved',
+                  payment_id: paymentId,
+                  preference_id: preferenceId,
+                  metodo_pagamento: transactionData.metodo_pagamento || 'pix',
+                  numeros: transactionData.numeros_comprados || [],
+                  valor_pago: transactionData.valor_total || 0,
+                  nome: transactionData.nome || '',
+                  email: transactionData.email || '',
+                  ...transactionData
+                });
+                clearCart();
+                
+                // Atualizar números em tempo real
+                await refreshNumbers();
+                
+                toast({
+                  title: "Pagamento confirmado!",
+                  description: "Seus números foram reservados com sucesso.",
+                });
+                return;
+              }
             } else {
               console.log('⚠️ Transação não encontrada ou ainda não processada:', txError);
             }
           }
           
+          // Se não encontrou transação paga no banco, verificar status dos parâmetros
           if (status === 'pending' || collectionStatus === 'pending' || hasPaymentPending) {
-            // Pagamento PIX pendente - mostrar informações
-            console.log('💳 Status: Pendente');
+            // Pagamento PIX pendente - verificar periodicamente
+            console.log('💳 Status: Pendente - iniciando verificação periódica');
             setPurchaseData({
               status: 'pending',
               payment_id: paymentId,
@@ -140,13 +165,52 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
             });
             clearCart();
             
+            // Verificação periódica para PIX pendente
+            const checkInterval = setInterval(async () => {
+              console.log('🔄 Verificando status do pagamento...');
+              
+              const { data: updatedTransactions } = await supabase
+                .from('transactions')
+                .select('*')
+                .or(`payment_id.eq.${preferenceId || paymentId},payment_id.eq.${paymentId || preferenceId}`)
+                .eq('status', 'pago')
+                .limit(1);
+
+              if (updatedTransactions && updatedTransactions.length > 0) {
+                console.log('✅ Pagamento confirmado! Atualizando interface...');
+                clearInterval(checkInterval);
+                
+                setPurchaseData({
+                  status: 'approved',
+                  payment_id: paymentId,
+                  preference_id: preferenceId,
+                  metodo_pagamento: updatedTransactions[0].metodo_pagamento || 'pix',
+                  numeros: updatedTransactions[0].numeros_comprados || [],
+                  valor_pago: updatedTransactions[0].valor_total || 0,
+                  nome: updatedTransactions[0].nome || '',
+                  email: updatedTransactions[0].email || '',
+                  ...updatedTransactions[0]
+                });
+                
+                await refreshNumbers();
+                
+                toast({
+                  title: "Pagamento aprovado!",
+                  description: "Seus números foram confirmados com sucesso.",
+                });
+              }
+            }, 10000); // Verificar a cada 10 segundos
+
+            // Limpar interval após 5 minutos
+            setTimeout(() => clearInterval(checkInterval), 300000);
+            
             toast({
               title: "Pagamento PIX iniciado!",
-              description: "Aguardando confirmação do pagamento.",
+              description: "Aguardando confirmação do pagamento. Verificando automaticamente...",
               variant: "default"
             });
-          } else if (status === 'approved' || collectionStatus === 'approved' || hasPaymentSuccess || transactionData) {
-            // Pagamento aprovado ou transação confirmada no banco
+          } else if (status === 'approved' || collectionStatus === 'approved' || hasPaymentSuccess) {
+            // Pagamento aprovado
             console.log('✅ Status: Aprovado');
             setPurchaseData({
               status: 'approved',
@@ -335,11 +399,10 @@ const PaymentSuccess: React.FC<PaymentSuccessProps> = ({ onGoHome }) => {
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <h4 className="font-semibold text-green-800 mb-2 flex items-center">
                 <span className="mr-2">✅</span>
-                Pagamento já realizado? Ótimo!
+                Verificação automática ativa
               </h4>
               <p className="text-sm text-green-700 mb-3">
-                Se você já pagou o PIX, seus números serão confirmados automaticamente em alguns minutos. 
-                Não se preocupe - o sistema está processando!
+                Estamos verificando seu pagamento automaticamente. A página será atualizada assim que o PIX for confirmado.
               </p>
               <div className="bg-white p-3 rounded-lg border border-green-300">
                 <p className="font-semibold text-green-800 mb-2">🕐 Tempo de processamento:</p>

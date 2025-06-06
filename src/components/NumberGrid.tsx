@@ -1,5 +1,5 @@
+
 import React, { useState, useEffect } from 'react';
-import { Clock } from 'lucide-react';
 import { useNumbers } from '../context/NumbersContext';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -9,21 +9,13 @@ interface NumberGridProps {
 }
 
 const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
-  const { numbers, loading, reservedNumbers, reserveNumbers, releaseReservations, timeRemaining, refreshNumbers } = useNumbers();
+  const { numbers, loading, selectedNumbers, setSelectedNumbers, clearSelectedNumbers } = useNumbers();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
-  const [isReleasing, setIsReleasing] = useState(false);
 
   useEffect(() => {
     onNumbersSelected(selectedNumbers);
   }, [selectedNumbers, onNumbersSelected]);
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
 
   const handleNumberClick = async (numero: number) => {
     if (!user) {
@@ -70,54 +62,12 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
     }
   };
 
-  const handleReserveNumbers = async () => {
-    if (selectedNumbers.length === 0) {
-      toast({
-        title: "Nenhum número selecionado",
-        description: "Selecione números antes de reservar",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const success = await reserveNumbers(selectedNumbers);
-    if (success) {
-      setSelectedNumbers([]);
-    }
-  };
-
-  const handleReleaseReservations = async () => {
-    if (isReleasing) return; // Evitar múltiplos cliques
-    
-    setIsReleasing(true);
-    try {
-      console.log('🔄 Iniciando liberação de reservas...');
-      
-      // Chamar a função de liberar reservas
-      await releaseReservations();
-      
-      // Limpar números selecionados
-      setSelectedNumbers([]);
-      
-      // Forçar atualização dos números
-      await refreshNumbers();
-      
-      console.log('✅ Reservas liberadas com sucesso');
-      
-      toast({
-        title: "Reservas liberadas",
-        description: "Suas reservas foram liberadas com sucesso",
-      });
-    } catch (error) {
-      console.error('❌ Erro ao liberar reservas:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao liberar reservas. Tente novamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsReleasing(false);
-    }
+  const handleClearSelection = () => {
+    clearSelectedNumbers();
+    toast({
+      title: "Seleção limpa",
+      description: "Números selecionados foram removidos",
+    });
   };
 
   const getNumberStatus = (numero: number) => {
@@ -169,36 +119,6 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
 
   return (
     <div className="space-y-6">
-      {/* Timer de reserva */}
-      {user && timeRemaining > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Clock className="w-5 h-5 text-yellow-600" />
-              <div>
-                <h3 className="font-semibold text-yellow-800">
-                  Você tem números reservados
-                </h3>
-                <p className="text-sm text-yellow-700">
-                  Tempo restante: {formatTime(timeRemaining)}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleReleaseReservations}
-              disabled={isReleasing}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isReleasing 
-                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                  : 'bg-yellow-600 hover:bg-yellow-700 text-white'
-              }`}
-            >
-              {isReleasing ? 'Liberando...' : 'Liberar Reservas'}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Action Buttons */}
       {user && selectedNumbers.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
@@ -212,10 +132,10 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
               </p>
             </div>
             <button
-              onClick={handleReserveNumbers}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              onClick={handleClearSelection}
+              className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
             >
-              Reservar Números
+              Limpar Seleção
             </button>
           </div>
         </div>

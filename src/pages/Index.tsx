@@ -20,43 +20,23 @@ const Index = () => {
     
     console.log('Index useEffect - path:', path, 'params:', urlParams.toString());
     
-    // Verificar se está na rota de sucesso ou tem parâmetros de pagamento
+    // 🔧 MELHORAR: Verificação mais rigorosa para tela de sucesso
     const hasStripeParams = urlParams.get('session_id'); // Stripe
-    const hasMercadoPagoParams = urlParams.get('payment_id') && urlParams.get('preference_id'); // MercadoPago
-    const hasPaymentSuccess = urlParams.get('payment_success') === 'true'; // 🔧 NOVO: Parâmetro de sucesso do MP
-    const hasPaymentPending = urlParams.get('payment_pending') === 'true'; // 🔧 NOVO: Parâmetro de pendente do MP
+    const hasMercadoPagoParams = (urlParams.get('payment_id') && urlParams.get('preference_id')) || 
+                                 (urlParams.get('payment_id') && urlParams.get('status')); // MercadoPago
+    const hasPaymentSuccess = urlParams.get('payment_success') === 'true';
+    const hasPaymentPending = urlParams.get('payment_pending') === 'true';
     
+    // Só ir para success se tiver parâmetros válidos de pagamento
     if (path === '/success' || hasStripeParams || hasMercadoPagoParams || hasPaymentSuccess || hasPaymentPending) {
       console.log('Setting view to success - Stripe:', !!hasStripeParams, 'MercadoPago:', !!hasMercadoPagoParams, 'MP Success:', hasPaymentSuccess, 'MP Pending:', hasPaymentPending);
       setCurrentView('success');
       
-      // 🔧 MELHORAR: Construir URL de sucesso com todos os parâmetros necessários
-      if (hasPaymentSuccess || hasPaymentPending) {
-        // Para MercadoPago, construir URL de sucesso com parâmetros simulados
-        const collection_id = urlParams.get('collection_id');
-        const collection_status = urlParams.get('collection_status') || (hasPaymentSuccess ? 'approved' : 'pending');
-        const payment_id = urlParams.get('payment_id');
-        const status = urlParams.get('status') || (hasPaymentSuccess ? 'approved' : 'pending');
-        const external_reference = urlParams.get('external_reference');
-        const preference_id = urlParams.get('preference_id');
-        
-        // Construir nova URL com parâmetros do MercadoPago
-        const newParams = new URLSearchParams();
-        if (collection_id) newParams.set('collection_id', collection_id);
-        if (payment_id) newParams.set('payment_id', payment_id);
-        if (preference_id) newParams.set('preference_id', preference_id);
-        if (external_reference) newParams.set('external_reference', external_reference);
-        newParams.set('collection_status', collection_status);
-        newParams.set('status', status);
-        
-        const newUrl = window.location.origin + '/success' + '?' + newParams.toString();
-        window.history.replaceState({}, '', newUrl);
-        console.log('🔧 URL atualizada para:', newUrl);
-      }
-      // Garantir que a URL está correta para outros casos
-      else if (path !== '/success' && (hasStripeParams || hasMercadoPagoParams)) {
+      // Garantir que está na rota /success com parâmetros
+      if (path !== '/success') {
         const newUrl = window.location.origin + '/success' + '?' + urlParams.toString();
         window.history.replaceState({}, '', newUrl);
+        console.log('🔧 URL atualizada para:', newUrl);
       }
     } 
     // Verificar se está tentando acessar admin
@@ -64,10 +44,15 @@ const Index = () => {
       console.log('Setting view to admin');
       setCurrentView('admin');
     }
-    // Se não há parâmetros especiais, garantir que está na view main
-    else if (path === '/' && !urlParams.toString()) {
+    // 🔧 DEFAULT: Ir para main e limpar qualquer parâmetro inválido
+    else {
       console.log('Setting view to main');
       setCurrentView('main');
+      // Limpar URL se tiver parâmetros inválidos
+      if (urlParams.toString() && !urlParams.get('admin')) {
+        window.history.replaceState({}, '', '/');
+        console.log('🧹 URL limpa, voltando para /');
+      }
     }
     
     // Remover loading após processar a rota
@@ -75,9 +60,9 @@ const Index = () => {
   }, []);
 
   const handleGoHome = () => {
-    console.log('Going home');
+    console.log('Going home - clearing all URL params');
     setCurrentView('main');
-    // Limpar URL
+    // 🔧 SEMPRE limpar URL completamente
     window.history.replaceState({}, '', '/');
   };
 
