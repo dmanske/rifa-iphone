@@ -23,13 +23,38 @@ const Index = () => {
     // Verificar se está na rota de sucesso ou tem parâmetros de pagamento
     const hasStripeParams = urlParams.get('session_id'); // Stripe
     const hasMercadoPagoParams = urlParams.get('payment_id') && urlParams.get('preference_id'); // MercadoPago
+    const hasPaymentSuccess = urlParams.get('payment_success') === 'true'; // 🔧 NOVO: Parâmetro de sucesso do MP
+    const hasPaymentPending = urlParams.get('payment_pending') === 'true'; // 🔧 NOVO: Parâmetro de pendente do MP
     
-    if (path === '/success' || hasStripeParams || hasMercadoPagoParams) {
-      console.log('Setting view to success - Stripe:', !!hasStripeParams, 'MercadoPago:', !!hasMercadoPagoParams);
+    if (path === '/success' || hasStripeParams || hasMercadoPagoParams || hasPaymentSuccess || hasPaymentPending) {
+      console.log('Setting view to success - Stripe:', !!hasStripeParams, 'MercadoPago:', !!hasMercadoPagoParams, 'MP Success:', hasPaymentSuccess, 'MP Pending:', hasPaymentPending);
       setCurrentView('success');
       
-      // Garantir que a URL está correta
-      if (path !== '/success' && (hasStripeParams || hasMercadoPagoParams)) {
+      // 🔧 MELHORAR: Construir URL de sucesso com todos os parâmetros necessários
+      if (hasPaymentSuccess || hasPaymentPending) {
+        // Para MercadoPago, construir URL de sucesso com parâmetros simulados
+        const collection_id = urlParams.get('collection_id');
+        const collection_status = urlParams.get('collection_status') || (hasPaymentSuccess ? 'approved' : 'pending');
+        const payment_id = urlParams.get('payment_id');
+        const status = urlParams.get('status') || (hasPaymentSuccess ? 'approved' : 'pending');
+        const external_reference = urlParams.get('external_reference');
+        const preference_id = urlParams.get('preference_id');
+        
+        // Construir nova URL com parâmetros do MercadoPago
+        const newParams = new URLSearchParams();
+        if (collection_id) newParams.set('collection_id', collection_id);
+        if (payment_id) newParams.set('payment_id', payment_id);
+        if (preference_id) newParams.set('preference_id', preference_id);
+        if (external_reference) newParams.set('external_reference', external_reference);
+        newParams.set('collection_status', collection_status);
+        newParams.set('status', status);
+        
+        const newUrl = window.location.origin + '/success' + '?' + newParams.toString();
+        window.history.replaceState({}, '', newUrl);
+        console.log('🔧 URL atualizada para:', newUrl);
+      }
+      // Garantir que a URL está correta para outros casos
+      else if (path !== '/success' && (hasStripeParams || hasMercadoPagoParams)) {
         const newUrl = window.location.origin + '/success' + '?' + urlParams.toString();
         window.history.replaceState({}, '', newUrl);
       }

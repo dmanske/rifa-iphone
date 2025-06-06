@@ -131,11 +131,12 @@ serve(async (req) => {
     // 6. Criar preferência MercadoPago
     const origin = req.headers.get("origin") || "https://rifaiphonecursor.vercel.app";
     
-    // URLs dinâmicas que funcionam tanto local quanto produção
-    const successUrl = `${origin}/payment-success`;  // Página de sucesso
-    const failureUrl = `${origin}/`;                 // Página inicial
+    // 🔧 CORRIGIR URLs - usar rotas que existem no app
+    const successUrl = `${origin}/?payment_success=true`;  // Para página principal com parâmetro
+    const failureUrl = `${origin}/`;                       // Página inicial
+    const pendingUrl = `${origin}/?payment_pending=true`;  // Para PIX pendente
     
-    console.log("URLs configuradas:", { origin, successUrl, failureUrl });
+    console.log("URLs configuradas:", { origin, successUrl, failureUrl, pendingUrl });
     console.log("📍 Ambiente detectado:", origin.includes('localhost') ? 'DESENVOLVIMENTO' : 'PRODUÇÃO');
     
     // 7. SALVAR TRANSAÇÃO NO BANCO PRIMEIRO (para ter o ID)
@@ -205,8 +206,9 @@ serve(async (req) => {
       back_urls: {
         success: successUrl,
         failure: failureUrl,
-        pending: successUrl
+        pending: pendingUrl  // 🔧 Adicionar URL para PIX pendente
       },
+      auto_return: "approved", // 🔧 Retornar automaticamente quando aprovado
       external_reference: transaction.id, // 🔑 CRITICAL: ID da transação para o webhook
       metadata: {
         numeros: JSON.stringify(numeros),
