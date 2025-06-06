@@ -260,6 +260,42 @@ export type Database = {
         }
         Relationships: []
       }
+      webhooks: {
+        Row: {
+          created_at: string | null
+          data_recebimento: string | null
+          erro: string | null
+          fonte: string | null
+          id: string
+          payload_raw: Json | null
+          payment_id: string | null
+          processado: boolean | null
+          transaction_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_recebimento?: string | null
+          erro?: string | null
+          fonte?: string | null
+          id?: string
+          payload_raw?: Json | null
+          payment_id?: string | null
+          processado?: boolean | null
+          transaction_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data_recebimento?: string | null
+          erro?: string | null
+          fonte?: string | null
+          id?: string
+          payload_raw?: Json | null
+          payment_id?: string | null
+          processado?: boolean | null
+          transaction_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -270,7 +306,9 @@ export type Database = {
         Returns: number
       }
       finalize_sale: {
-        Args: { _user_id: string; _numeros: number[]; _transaction_id: string }
+        Args:
+          | { _user_id: string; _numeros: number[]; _transaction_id: string }
+          | { _user_id: string; _numeros: number[]; _transaction_id: string }
         Returns: boolean
       }
       has_role: {
@@ -278,6 +316,10 @@ export type Database = {
           _user_id: string
           _role: Database["public"]["Enums"]["user_role"]
         }
+        Returns: boolean
+      }
+      liberar_numeros: {
+        Args: { _numeros: number[] }
         Returns: boolean
       }
       log_access: {

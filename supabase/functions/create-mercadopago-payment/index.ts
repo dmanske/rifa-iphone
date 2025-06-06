@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -120,7 +121,7 @@ serve(async (req) => {
 
     // 5. Calcular valores
     const quantidade = numeros.length;
-    const precoBase = 1; // R$ 1,00 para teste - LEMBRAR DE VOLTAR PARA 100
+    const precoBase = 100; // R$ 100,00
     let precoFinal = precoBase * quantidade;
     
     if (metodo_pagamento === 'cartao') {
@@ -153,7 +154,7 @@ serve(async (req) => {
         payment_id: 'temp-' + Date.now(), // Temporário, será atualizado depois
         numeros_comprados: numeros,
         valor_total: precoFinal,
-        metodo_pagamento: 'pix',
+        metodo_pagamento: metodo_pagamento,
         status: 'pendente',
         nome: nome,
         email: email,
@@ -305,4 +306,4 @@ serve(async (req) => {
       status: 500,
     });
   }
-}); 
+});
