@@ -6,6 +6,7 @@ import { CartProvider } from '../context/CartContext';
 import Auth from '../components/Auth';
 import RaffleMain from '../components/RaffleMain';
 import PaymentSuccess from '../components/PaymentSuccess';
+import OrganizerPanel from '../components/OrganizerPanel';
 
 type ViewType = 'main' | 'auth' | 'success' | 'admin';
 
@@ -93,7 +94,7 @@ const Index = () => {
       case 'auth':
         return <Auth onBack={() => setCurrentView('main')} />;
       case 'admin':
-        return <Auth onBack={() => setCurrentView('main')} />;
+        return <OrganizerPanel onBack={() => setCurrentView('main')} />;
       case 'success':
         return <PaymentSuccess onGoHome={handleGoHome} />;
       default:
