@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ShoppingCart, X, LogIn } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -138,48 +137,21 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
     setShowCart(true);
   };
 
-  // Layout responsivo para botões - Mobile otimizado
+  // Classes dinâmicas para os botões com grid responsivo
   const getNumberButtonClass = (number: number) => {
-    const baseClasses = 'rounded-xl font-bold transition-all duration-200 border-2 flex items-center justify-center text-center';
-    
-    // Mobile: botões maiores e mais espaçados | Desktop: layout original
-    const sizeClasses = isMobile 
-      ? 'h-14 w-full text-lg min-h-[56px] touch-manipulation' // Mobile: botões maiores para toque
-      : 'h-16 text-base'; // Desktop: mantém tamanho original
+    const baseClasses = 'rounded-xl font-bold transition-all duration-200 border-2 flex items-center justify-center text-center min-h-[50px] sm:min-h-[60px] lg:min-h-[64px] touch-manipulation';
     
     if (isNumberSold(number)) {
-      return `${baseClasses} ${sizeClasses} bg-red-100 text-red-500 cursor-not-allowed border-red-200 opacity-60`;
+      return `${baseClasses} bg-red-100 text-red-500 cursor-not-allowed border-red-200 opacity-60`;
     }
     if (isNumberInCart(number)) {
-      return `${baseClasses} ${sizeClasses} bg-blue-600 text-white border-blue-600 shadow-lg scale-105`;
+      return `${baseClasses} bg-blue-600 text-white border-blue-600 shadow-lg scale-105`;
     }
-    return `${baseClasses} ${sizeClasses} bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 active:scale-95 cursor-pointer shadow-sm`;
+    return `${baseClasses} bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 active:scale-95 cursor-pointer shadow-sm`;
   };
 
-  // Organizar números em linhas - Layout responsivo
-  const organizeNumbersForDisplay = () => {
-    const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
-    
-    if (isMobile) {
-      // Mobile: organizar em grupos de 6 números (2x3 grid)
-      const groups = [];
-      for (let i = 0; i < numbers.length; i += 6) {
-        groups.push(numbers.slice(i, i + 6));
-      }
-      return groups;
-    } else {
-      // Desktop: manter layout original (10 por linha)
-      const rows = [];
-      for (let i = 1; i <= 130; i += 10) {
-        const row = [];
-        for (let j = i; j < i + 10 && j <= 130; j++) {
-          row.push(j);
-        }
-        rows.push(row);
-      }
-      return rows;
-    }
-  };
+  // Gerar array de números de 1 a 130
+  const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
 
   if (loading) {
     return (
@@ -191,8 +163,6 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
       </div>
     );
   }
-
-  const numberGroups = organizeNumbersForDisplay();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -272,11 +242,11 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
         </div>
       )}
 
-      {/* Numbers Grid - Layout Responsivo Otimizado */}
+      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Legend - Compacta no mobile */}
+        {/* Legend - Compacta e responsiva */}
         <div className="mb-6">
-          <div className={`flex gap-4 text-xs ${isMobile ? 'flex-wrap justify-center' : 'flex-row'}`}>
+          <div className="flex flex-wrap justify-center gap-4 text-xs">
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-white border-2 border-gray-200 rounded"></div>
               <span className="text-gray-600">Disponível</span>
@@ -292,68 +262,61 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
           </div>
         </div>
 
-        {/* Grid Principal - Layout Adaptativo */}
-        <div className={`space-y-6 ${isMobile ? 'space-y-4' : ''}`}>
-          {numberGroups.map((group, groupIndex) => (
-            <div key={groupIndex} className="bg-white rounded-2xl shadow-sm border p-4">
-              {/* Header do grupo */}
-              <div className="mb-4 text-center">
-                <span className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
-                  {isMobile 
-                    ? `${group[0].toString().padStart(3, '0')} - ${group[group.length - 1].toString().padStart(3, '0')}`
-                    : `${group[0].toString().padStart(3, '0')} - ${group[group.length - 1].toString().padStart(3, '0')}`
-                  }
-                </span>
-              </div>
-              
-              {/* Grid de números - Responsivo */}
-              <div className={`grid gap-3 ${
-                isMobile 
-                  ? 'grid-cols-2 sm:grid-cols-3' // Mobile: 2 colunas, SM: 3 colunas
-                  : 'grid-cols-10' // Desktop: 10 colunas (original)
-              }`}>
-                {group.map((number) => (
-                  <button
-                    key={number}
-                    onClick={() => handleNumberClick(number)}
-                    disabled={isNumberSold(number) || !user}
-                    className={`
-                      ${getNumberButtonClass(number)}
-                      ${!user ? 'opacity-50' : ''}
-                      ${isMobile ? 'active:scale-95 active:bg-blue-100' : ''} // Feedback de toque mobile
-                    `}
-                  >
-                    {number.toString().padStart(3, '0')}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+        {/* Grid Principal - Layout Totalmente Responsivo com auto-fit */}
+        <div className="bg-white rounded-2xl shadow-sm border p-4 sm:p-6">
+          <div className="mb-4 text-center">
+            <span className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
+              Números da Sorte • 001 - 130
+            </span>
+          </div>
+          
+          {/* 
+            Grid responsivo usando auto-fit:
+            - Mobile (até 480px): ~3-4 colunas (minmax 70px)
+            - Tablet (480px-768px): ~5-7 colunas 
+            - Desktop (768px+): ~8-12 colunas
+            O grid se ajusta automaticamente baseado no tamanho da tela
+          */}
+          <div className="grid gap-2 sm:gap-3 grid-cols-[repeat(auto-fit,minmax(70px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(75px,1fr))] lg:grid-cols-[repeat(auto-fit,minmax(80px,1fr))]">
+            {numbers.map((number) => (
+              <button
+                key={number}
+                onClick={() => handleNumberClick(number)}
+                disabled={isNumberSold(number) || !user}
+                className={`
+                  ${getNumberButtonClass(number)}
+                  ${!user ? 'opacity-50' : ''}
+                  text-sm sm:text-base
+                `}
+              >
+                {number.toString().padStart(3, '0')}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Stats Cards - Layout responsivo */}
-        <div className={`mt-8 grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}`}>
+        <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-            <div className={`font-bold text-blue-600 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+            <div className="font-bold text-blue-600 text-lg sm:text-xl">
               {130 - soldNumbers.length}
             </div>
             <div className="text-xs text-gray-600">Disponíveis</div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-            <div className={`font-bold text-red-600 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+            <div className="font-bold text-red-600 text-lg sm:text-xl">
               {soldNumbers.length}
             </div>
             <div className="text-xs text-gray-600">Vendidos</div>
           </div>
-          {/* Mobile: Segunda linha para os próximos 2 cards */}
           <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-            <div className={`font-bold text-green-600 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+            <div className="font-bold text-green-600 text-lg sm:text-xl">
               {cartItems.length}
             </div>
             <div className="text-xs text-gray-600">No Carrinho</div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-            <div className={`font-bold text-purple-600 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+            <div className="font-bold text-purple-600 text-lg sm:text-xl">
               R$ {(cartItems.length * 100).toLocaleString('pt-BR')}
             </div>
             <div className="text-xs text-gray-600">Total</div>
