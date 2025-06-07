@@ -182,24 +182,18 @@ const PurchasesList: React.FC = () => {
   };
 
   const hasPixProof = (purchase: Purchase) => {
-    const hasProofData = purchase.status === 'pago' && 
-                        purchase.metodo_pagamento === 'pix' && 
-                        (purchase.comprovante_url || 
-                         purchase.qr_code_base64 || 
-                         purchase.dados_comprovante ||
-                         purchase.mercadopago_payment_id);
+    const isPixPayment = purchase.metodo_pagamento === 'pix';
+    const isPaid = purchase.status === 'pago';
     
     console.log(`Verificando comprovante para ${purchase.id}:`, {
       status: purchase.status,
       metodo: purchase.metodo_pagamento,
-      comprovante_url: purchase.comprovante_url,
-      qr_code_base64: !!purchase.qr_code_base64,
-      dados_comprovante: !!purchase.dados_comprovante,
-      mercadopago_payment_id: purchase.mercadopago_payment_id,
-      hasProofData
+      isPaid,
+      isPixPayment,
+      mercadopago_payment_id: purchase.mercadopago_payment_id
     });
     
-    return hasProofData;
+    return isPixPayment && isPaid;
   };
 
   const totalVendido = purchases
@@ -366,7 +360,7 @@ const PurchasesList: React.FC = () => {
                       </button>
                     ) : (
                       <span className="text-xs text-gray-400">
-                        {purchase.status === 'pago' && purchase.metodo_pagamento === 'pix' ? 'Sem dados' : 'N/A'}
+                        {purchase.status === 'pago' && purchase.metodo_pagamento === 'pix' ? 'Processando...' : 'N/A'}
                       </span>
                     )}
                   </TableCell>
