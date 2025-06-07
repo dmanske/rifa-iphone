@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, CreditCard, Smartphone, Mail, User, Phone, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, CreditCard, Smartphone, Mail, User, Phone, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -87,15 +88,14 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
     setIsProcessing(true);
 
     try {
+      // Unificar chamada das funções - usar a mesma lógica para PIX e Cartão
       let functionName: string;
       let providerName: string;
 
       if (paymentMethod === 'pix') {
-        // Usar MercadoPago para Pix
         functionName = 'create-mercadopago-payment';
         providerName = 'MercadoPago';
       } else {
-        // Usar Stripe para cartão
         functionName = 'create-checkout-session';
         providerName = 'Stripe';
       }
@@ -122,9 +122,10 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
         throw new Error('URL de pagamento não recebida');
       }
 
-      console.log(`Redirecionando para ${providerName}:`, data.url);
+      console.log(`✅ Sessão criada com sucesso:`, data);
 
-      // Redirecionar para o checkout (MercadoPago ou Stripe)
+      // UNIFICAR FLUXO: Ambos PIX e Cartão usam redirecionamento direto
+      console.log(`Redirecionando para ${providerName}:`, data.url);
       window.location.href = data.url;
 
     } catch (error) {
@@ -329,7 +330,7 @@ const CheckoutAuth: React.FC<CheckoutAuthProps> = ({ onBack, onClose }) => {
           {isProcessing ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Processando...</span>
+              <span>Redirecionando para pagamento...</span>
             </>
           ) : (
             <span>

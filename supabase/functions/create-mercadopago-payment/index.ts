@@ -128,13 +128,13 @@ serve(async (req) => {
       precoFinal = Math.round(precoFinal * 1.05);
     }
 
-    // 6. Criar preferência MercadoPago
+    // 6. URLs de retorno - UNIFICADAS COM STRIPE
     const origin = req.headers.get("origin") || "https://rifaiphonecursor.vercel.app";
     
-    // URLs otimizadas - sempre redirecionar para home
-    const successUrl = `${origin}/?payment_success=true&source=mercadopago`;
+    // USAR O MESMO PADRÃO DO STRIPE - redirecionar para /success
+    const successUrl = `${origin}/success?payment_success=true&source=mercadopago`;
     const failureUrl = `${origin}/?payment_failed=true&source=mercadopago`;
-    const pendingUrl = `${origin}/?payment_pending=true&source=mercadopago`;
+    const pendingUrl = `${origin}/success?payment_pending=true&source=mercadopago`;
     
     console.log("URLs configuradas:", { origin, successUrl, failureUrl, pendingUrl });
     console.log("📍 Ambiente detectado:", origin.includes('localhost') ? 'DESENVOLVIMENTO' : 'PRODUÇÃO');
@@ -208,6 +208,7 @@ serve(async (req) => {
         failure: failureUrl,
         pending: pendingUrl
       },
+      // FORÇAR RETORNO AUTOMÁTICO - IGUAL AO STRIPE
       auto_return: "approved",
       external_reference: transaction.id,
       metadata: {
@@ -273,7 +274,7 @@ serve(async (req) => {
 
     console.log("✅ Payment ID atualizado:", mpData.id);
 
-    // 9. Sucesso!
+    // 9. Sucesso! - RETORNAR A MESMA ESTRUTURA DO STRIPE
     const response = { 
       url: mpData.init_point,
       payment_id: mpData.id,

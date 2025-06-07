@@ -1,10 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, CreditCard, Smartphone, Mail, User, Phone, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, CreditCard, Smartphone, Mail, User, Phone, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { useNumbers } from '../context/NumbersContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import PaymentWaiting from './PaymentWaiting';
 
 interface RaffleCheckoutProps {
   onBack: () => void;
@@ -16,12 +15,6 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
   const { toast } = useToast();
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao'>('pix');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showPaymentWaiting, setShowPaymentWaiting] = useState(false);
-  const [paymentData, setPaymentData] = useState<{
-    transactionId: string;
-    paymentId: string;
-    paymentMethod: 'pix' | 'cartao';
-  } | null>(null);
   const [formData, setFormData] = useState({
     name: profile?.full_name || '',
     email: user?.email || '',
@@ -48,15 +41,6 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
       ...prev,
       [e.target.name]: e.target.value
     }));
-  };
-
-  const handlePaymentConfirmed = () => {
-    console.log('🎉 Pagamento confirmado! Redirecionando para home...');
-    
-    // Usar o mesmo método que o cartão - redirecionamento direto
-    const currentUrl = new URL(window.location.href);
-    currentUrl.searchParams.set('payment_success', 'true');
-    window.location.href = currentUrl.toString();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,15 +85,14 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
     setIsProcessing(true);
 
     try {
+      // Unificar chamada das funções - usar a mesma lógica para PIX e Cartão
       let functionName: string;
       let providerName: string;
 
       if (paymentMethod === 'pix') {
-        // Usar MercadoPago para Pix
         functionName = 'create-mercadopago-payment';
         providerName = 'MercadoPago';
       } else {
-        // Usar Stripe para cartão
         functionName = 'create-checkout-session';
         providerName = 'Stripe';
       }
@@ -139,27 +122,9 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
 
       console.log(`✅ Sessão criada com sucesso:`, data);
 
-      if (paymentMethod === 'pix') {
-        // Para PIX, salvar dados e mostrar tela de aguardo
-        setPaymentData({
-          transactionId: data.transaction_id,
-          paymentId: data.payment_id,
-          paymentMethod: paymentMethod
-        });
-        setShowPaymentWaiting(true);
-        
-        // Abrir MercadoPago em nova aba
-        window.open(data.url, '_blank');
-        
-        toast({
-          title: "PIX criado com sucesso!",
-          description: "Complete o pagamento na nova aba. A confirmação será automática.",
-        });
-      } else {
-        // Para cartão, redirecionar diretamente (igual ao fluxo atual)
-        console.log(`Redirecionando para ${providerName}:`, data.url);
-        window.location.href = data.url;
-      }
+      // UNIFICAR FLUXO: Ambos PIX e Cartão usam redirecionamento direto
+      console.log(`Redirecionando para ${providerName}:`, data.url);
+      window.location.href = data.url;
 
     } catch (error) {
       console.error('Erro no checkout:', error);
@@ -172,24 +137,6 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
       setIsProcessing(false);
     }
   };
-
-  // Se está aguardando pagamento, mostrar tela de aguardo
-  if (showPaymentWaiting && paymentData) {
-    return (
-      <PaymentWaiting
-        transactionId={paymentData.transactionId}
-        paymentId={paymentData.paymentId}
-        paymentMethod={paymentData.paymentMethod}
-        selectedNumbers={selectedNumbers}
-        totalAmount={finalTotal}
-        onPaymentConfirmed={handlePaymentConfirmed}
-        onBack={() => {
-          setShowPaymentWaiting(false);
-          setPaymentData(null);
-        }}
-      />
-    );
-  }
 
   if (!user) {
     return (
@@ -403,7 +350,7 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
             {isProcessing ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Processando...</span>
+                <span>Redirecionando para pagamento...</span>
               </>
             ) : (
               <span>

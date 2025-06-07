@@ -20,16 +20,20 @@ const Index = () => {
     
     console.log('Index useEffect - path:', path, 'params:', urlParams.toString());
     
-    // 🔧 MELHORAR: Verificação mais rigorosa para tela de sucesso
+    // UNIFICAR DETECÇÃO DE SUCESSO - STRIPE E MERCADOPAGO
     const hasStripeParams = urlParams.get('session_id'); // Stripe
-    const hasMercadoPagoParams = (urlParams.get('payment_id') && urlParams.get('preference_id')) || 
-                                 (urlParams.get('payment_id') && urlParams.get('status')); // MercadoPago
-    const hasPaymentSuccess = urlParams.get('payment_success') === 'true';
-    const hasPaymentPending = urlParams.get('payment_pending') === 'true';
+    const hasMercadoPagoParams = (
+      (urlParams.get('payment_id') && urlParams.get('preference_id')) || 
+      (urlParams.get('payment_id') && urlParams.get('status')) ||
+      urlParams.get('payment_success') === 'true' ||
+      urlParams.get('payment_pending') === 'true'
+    ); // MercadoPago
     
-    // Só ir para success se tiver parâmetros válidos de pagamento
-    if (path === '/success' || hasStripeParams || hasMercadoPagoParams || hasPaymentSuccess || hasPaymentPending) {
-      console.log('Setting view to success - Stripe:', !!hasStripeParams, 'MercadoPago:', !!hasMercadoPagoParams, 'MP Success:', hasPaymentSuccess, 'MP Pending:', hasPaymentPending);
+    // CRITÉRIO UNIFICADO: rota /success OU parâmetros válidos de pagamento
+    const shouldShowSuccess = path === '/success' || hasStripeParams || hasMercadoPagoParams;
+    
+    if (shouldShowSuccess) {
+      console.log('Setting view to success - Stripe:', !!hasStripeParams, 'MercadoPago:', !!hasMercadoPagoParams);
       setCurrentView('success');
       
       // Garantir que está na rota /success com parâmetros
@@ -44,7 +48,7 @@ const Index = () => {
       console.log('Setting view to admin');
       setCurrentView('admin');
     }
-    // 🔧 DEFAULT: Ir para main e limpar qualquer parâmetro inválido
+    // DEFAULT: Ir para main e limpar qualquer parâmetro inválido
     else {
       console.log('Setting view to main');
       setCurrentView('main');
@@ -62,7 +66,7 @@ const Index = () => {
   const handleGoHome = () => {
     console.log('Going home - clearing all URL params');
     setCurrentView('main');
-    // 🔧 SEMPRE limpar URL completamente
+    // SEMPRE limpar URL completamente
     window.history.replaceState({}, '', '/');
   };
 
