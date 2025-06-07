@@ -141,20 +141,20 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
 
   // Classes dinâmicas para os botões com grid responsivo
   const getNumberButtonClass = (number: number) => {
-    const baseClasses = 'rounded-xl font-bold transition-all duration-200 border-2 flex items-center justify-center text-center min-h-[50px] sm:min-h-[60px] lg:min-h-[64px] touch-manipulation';
+    const baseClasses = 'rounded-xl font-bold transition-all duration-200 border-2 flex items-center justify-center text-center touch-manipulation';
     
     // Sempre mostrar números vendidos como desabilitados, independente do login
     if (isNumberSold(number)) {
-      return `${baseClasses} bg-red-100 text-red-500 cursor-not-allowed border-red-200 opacity-60`;
+      return `${baseClasses} bg-red-100 text-red-500 cursor-not-allowed border-red-200 opacity-60 h-12`;
     }
     
     // Mostrar números no carrinho apenas se o usuário estiver logado
     if (user && isNumberInCart(number)) {
-      return `${baseClasses} bg-blue-600 text-white border-blue-600 shadow-lg scale-105`;
+      return `${baseClasses} bg-blue-600 text-white border-blue-600 shadow-lg scale-105 h-12`;
     }
     
     // Números disponíveis (com indicação visual se não logado)
-    const availableClasses = `${baseClasses} bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 active:scale-95 cursor-pointer shadow-sm`;
+    const availableClasses = `${baseClasses} bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 active:scale-95 cursor-pointer shadow-sm h-12`;
     
     if (!user) {
       return `${availableClasses} opacity-75`; // Leve indicação visual de que precisa login
@@ -275,7 +275,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
           </div>
         </div>
 
-        {/* Grid Principal - Exatamente 7 colunas no mobile */}
+        {/* Grid Principal - FORÇAR 7 colunas no mobile */}
         <div className="bg-white rounded-2xl shadow-sm border p-4 sm:p-6">
           <div className="mb-4 text-center">
             <span className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
@@ -283,12 +283,18 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
             </span>
           </div>
           
-          {/* Grid fixo: 7 colunas no mobile, auto-fit no desktop */}
+          {/* Grid com largura fixa para mobile - EXATAMENTE 7 colunas */}
           <div className={`gap-2 sm:gap-3 ${
             isMobile 
-              ? 'grid grid-cols-7' // Mobile: exatamente 7 colunas
+              ? 'grid' // Mobile: usar CSS personalizado
               : 'grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))]' // Desktop: auto-fit
-          }`}>
+          }`}
+          style={isMobile ? {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, 1fr)', // FORÇAR 7 colunas iguais
+            gap: '8px'
+          } : {}}
+          >
             {numbers.map((number) => (
               <button
                 key={number}
@@ -296,7 +302,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
                 disabled={isNumberSold(number)} // Sempre desabilitar números vendidos
                 className={`
                   ${getNumberButtonClass(number)}
-                  ${isMobile ? 'text-xs' : 'text-sm sm:text-base'}
+                  ${isMobile ? 'text-xs min-w-0' : 'text-sm sm:text-base'}
                 `}
               >
                 {number.toString().padStart(3, '0')}

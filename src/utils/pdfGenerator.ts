@@ -1,6 +1,13 @@
 
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
+
+// Extend jsPDF type to include autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 interface Purchase {
   id: string;
@@ -28,28 +35,28 @@ export const generateModernPDFReport = (filteredPurchases: Purchase[]) => {
     const doc = new jsPDF();
     
     // Configurar cores melhoradas para legibilidade
-    const primaryColor: [number, number, number] = [59, 130, 246]; // blue-600
-    const secondaryColor: [number, number, number] = [34, 197, 94]; // green-500
-    const textColor: [number, number, number] = [31, 41, 55]; // gray-800
-    const lightGray: [number, number, number] = [248, 250, 252]; // gray-100
+    const primaryColor = [59, 130, 246]; // blue-600
+    const secondaryColor = [34, 197, 94]; // green-500
+    const textColor = [31, 41, 55]; // gray-800
+    const lightGray = [248, 250, 252]; // gray-100
     
     // Cabeçalho melhorado
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, 210, 45, 'F');
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 50, 'F');
     
     // Título maior e mais visível
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(26);
+    doc.setFontSize(28);
     doc.setFont('helvetica', 'bold');
-    doc.text('Relatório Completo de Vendas', 105, 20, { align: 'center' });
+    doc.text('Relatório de Vendas', 105, 25, { align: 'center' });
     
     // Data em fonte maior
-    doc.setFontSize(14);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 105, 35, { align: 'center' });
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 105, 40, { align: 'center' });
     
     // Resetar cor do texto
-    doc.setTextColor(...textColor);
+    doc.setTextColor(textColor[0], textColor[1], textColor[2]);
     
     // Calcular estatísticas
     const totalCompras = filteredPurchases.length;
@@ -66,38 +73,38 @@ export const generateModernPDFReport = (filteredPurchases: Purchase[]) => {
       .reduce((sum, p) => sum + Number(p.valor_total), 0);
 
     // Seção de estatísticas com layout melhorado
-    const statsY = 55;
-    doc.setFillColor(...lightGray);
-    doc.rect(10, statsY, 190, 60, 'F');
+    const statsY = 60;
+    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+    doc.rect(10, statsY, 190, 70, 'F');
     
     // Título da seção maior
-    doc.setFontSize(18);
+    doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...primaryColor);
-    doc.text('📊 Resumo Executivo', 20, statsY + 18);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text('📊 Resumo Executivo', 20, statsY + 20);
     
     // Estatísticas em fonte maior e melhor organizadas
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...textColor);
+    doc.setTextColor(textColor[0], textColor[1], textColor[2]);
     
     // Coluna da esquerda
-    doc.text(`Total de Compras: ${totalCompras}`, 20, statsY + 32);
-    doc.text(`Pagamentos Confirmados: ${totalPago.length}`, 20, statsY + 42);
-    doc.text(`Pendentes: ${totalPendente.length}`, 20, statsY + 52);
+    doc.text(`Total de Compras: ${totalCompras}`, 20, statsY + 35);
+    doc.text(`Pagamentos Confirmados: ${totalPago.length}`, 20, statsY + 48);
+    doc.text(`Pendentes: ${totalPendente.length}`, 20, statsY + 61);
     
     // Coluna da direita
     doc.setFont('helvetica', 'bold');
-    doc.text(`💰 Total Arrecadado: R$ ${totalVendido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 110, statsY + 32);
+    doc.text(`💰 Total Arrecadado: R$ ${totalVendido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 110, statsY + 35);
     doc.setFont('helvetica', 'normal');
-    doc.text(`💳 PIX: R$ ${totalPix.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 110, statsY + 42);
-    doc.text(`🏦 Cartão: R$ ${totalCartao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 110, statsY + 52);
+    doc.text(`💳 PIX: R$ ${totalPix.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 110, statsY + 48);
+    doc.text(`🏦 Cartão: R$ ${totalCartao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 110, statsY + 61);
 
     // Título da tabela
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...primaryColor);
-    doc.text('📋 Detalhamento das Transações', 20, 130);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text('📋 Detalhamento das Transações', 20, 145);
 
     // Preparar dados da tabela com melhor formatação
     const tableData = filteredPurchases.map(p => [
@@ -113,22 +120,22 @@ export const generateModernPDFReport = (filteredPurchases: Purchase[]) => {
     console.log('Dados da tabela preparados:', tableData.length, 'linhas');
 
     // Tabela com design melhorado e mais legível
-    (doc as any).autoTable({
+    doc.autoTable({
       head: [['Nome', 'Email', 'Números', 'Valor', 'Método', 'Status', 'Data']],
       body: tableData,
-      startY: 140,
+      startY: 155,
       styles: { 
-        fontSize: 10, // Fonte maior
-        cellPadding: 4, // Mais espaçamento
+        fontSize: 12, // Fonte maior
+        cellPadding: 5, // Mais espaçamento
         textColor: textColor,
         lineColor: [200, 200, 200],
-        lineWidth: 0.1
+        lineWidth: 0.2
       },
       headStyles: { 
         fillColor: primaryColor,
         textColor: [255, 255, 255],
         fontStyle: 'bold',
-        fontSize: 11
+        fontSize: 13
       },
       alternateRowStyles: {
         fillColor: lightGray
@@ -163,7 +170,7 @@ export const generateModernPDFReport = (filteredPurchases: Purchase[]) => {
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      doc.setFontSize(9);
+      doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
       
       // Linha separadora
