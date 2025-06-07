@@ -275,7 +275,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
           </div>
         </div>
 
-        {/* Grid Principal - Layout Totalmente Responsivo com auto-fit */}
+        {/* Grid Principal - Layout Responsivo com 7 colunas no mobile */}
         <div className="bg-white rounded-2xl shadow-sm border p-4 sm:p-6">
           <div className="mb-4 text-center">
             <span className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
@@ -284,13 +284,15 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
           </div>
           
           {/* 
-            Grid responsivo usando auto-fit:
-            - Mobile (até 480px): ~3-4 colunas (minmax 70px)
-            - Tablet (480px-768px): ~5-7 colunas 
-            - Desktop (768px+): ~8-12 colunas
-            O grid se ajusta automaticamente baseado no tamanho da tela
+            Grid responsivo:
+            - Mobile: 7 colunas fixas
+            - Desktop: auto-fit para se ajustar automaticamente
           */}
-          <div className="grid gap-2 sm:gap-3 grid-cols-[repeat(auto-fit,minmax(70px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(75px,1fr))] lg:grid-cols-[repeat(auto-fit,minmax(80px,1fr))]">
+          <div className={`gap-2 sm:gap-3 ${
+            isMobile 
+              ? 'grid grid-cols-7' // Mobile: 7 colunas fixas
+              : 'grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))]' // Desktop: auto-fit
+          }`}>
             {numbers.map((number) => (
               <button
                 key={number}
