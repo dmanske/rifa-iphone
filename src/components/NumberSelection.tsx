@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ShoppingCart, X, LogIn } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -19,10 +20,10 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
   const [soldNumbers, setSoldNumbers] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Buscar números vendidos sempre que o componente montar ou quando o usuário mudar
+  // Buscar números vendidos sempre que o componente montar (independente do usuário)
   useEffect(() => {
     fetchSoldNumbers();
-  }, [user]);
+  }, []); // Remover dependência do user para carregar sempre
 
   const fetchSoldNumbers = async () => {
     try {
@@ -109,13 +110,14 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
   const isNumberInCart = (number: number) => cartItems.some(item => item.number === number);
 
   const handleNumberClick = (number: number) => {
+    // Sempre bloquear números vendidos, mesmo sem login
+    if (isNumberSold(number)) return;
+    
     // Verificar se o usuário está logado antes de permitir seleção
     if (!user) {
       onAuthRequired();
       return;
     }
-
-    if (isNumberSold(number)) return;
     
     if (isNumberInCart(number)) {
       removeFromCart(number);
@@ -141,13 +143,24 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
   const getNumberButtonClass = (number: number) => {
     const baseClasses = 'rounded-xl font-bold transition-all duration-200 border-2 flex items-center justify-center text-center min-h-[50px] sm:min-h-[60px] lg:min-h-[64px] touch-manipulation';
     
+    // Sempre mostrar números vendidos como desabilitados, independente do login
     if (isNumberSold(number)) {
       return `${baseClasses} bg-red-100 text-red-500 cursor-not-allowed border-red-200 opacity-60`;
     }
-    if (isNumberInCart(number)) {
+    
+    // Mostrar números no carrinho apenas se o usuário estiver logado
+    if (user && isNumberInCart(number)) {
       return `${baseClasses} bg-blue-600 text-white border-blue-600 shadow-lg scale-105`;
     }
-    return `${baseClasses} bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 active:scale-95 cursor-pointer shadow-sm`;
+    
+    // Números disponíveis (com indicação visual se não logado)
+    const availableClasses = `${baseClasses} bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 active:scale-95 cursor-pointer shadow-sm`;
+    
+    if (!user) {
+      return `${availableClasses} opacity-75`; // Leve indicação visual de que precisa login
+    }
+    
+    return availableClasses;
   };
 
   // Gerar array de números de 1 a 130
@@ -282,10 +295,9 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
               <button
                 key={number}
                 onClick={() => handleNumberClick(number)}
-                disabled={isNumberSold(number) || !user}
+                disabled={isNumberSold(number)} // Sempre desabilitar números vendidos
                 className={`
                   ${getNumberButtonClass(number)}
-                  ${!user ? 'opacity-50' : ''}
                   text-sm sm:text-base
                 `}
               >
@@ -311,13 +323,13 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
             <div className="font-bold text-green-600 text-lg sm:text-xl">
-              {cartItems.length}
+              {user ? cartItems.length : 0}
             </div>
             <div className="text-xs text-gray-600">No Carrinho</div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
             <div className="font-bold text-purple-600 text-lg sm:text-xl">
-              R$ {(cartItems.length * 100).toLocaleString('pt-BR')}
+              R$ {user ? (cartItems.length * 100).toLocaleString('pt-BR') : '0'}
             </div>
             <div className="text-xs text-gray-600">Total</div>
           </div>
