@@ -1,4 +1,3 @@
-
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -27,11 +26,11 @@ export const generateModernPDFReport = (filteredPurchases: Purchase[]) => {
     
     const doc = new jsPDF();
     
-    // Configurar cores (RGB values)
-    const primaryColor = [59, 130, 246] as const; // blue-600
-    const secondaryColor = [34, 197, 94] as const; // green-500
-    const textColor = [31, 41, 55] as const; // gray-800
-    const lightGray = [249, 250, 251] as const; // gray-50
+    // Configurar cores (RGB values) - removido 'as const' para evitar readonly
+    const primaryColor: [number, number, number] = [59, 130, 246]; // blue-600
+    const secondaryColor: [number, number, number] = [34, 197, 94]; // green-500
+    const textColor: [number, number, number] = [31, 41, 55]; // gray-800
+    const lightGray: [number, number, number] = [249, 250, 251]; // gray-50
     
     // Cabeçalho com cores
     doc.setFillColor(...primaryColor);
