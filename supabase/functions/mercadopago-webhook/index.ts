@@ -85,53 +85,74 @@ serve(async (req) => {
             if (transaction.status !== "completed" && transaction.status !== "pago") {
               console.log("🔄 Finalizando venda...");
 
-              // Finalizar a venda usando a função corrigida
-              const { error: finalizeError } = await supabase
-                .rpc("finalize_sale", {
-                  p_transaction_id: transaction.id,
-                  p_payment_id: paymentId.toString(),
-                  p_payment_method: "mercadopago_pix"
-                });
+              // Extrair dados do comprovante PIX
+              const comprovanteData = {
+                ticket_url: paymentData.point_of_interaction?.transaction_data?.ticket_url || null,
+                qr_code: paymentData.point_of_interaction?.transaction_data?.qr_code || null,
+                qr_code_base64: paymentData.point_of_interaction?.transaction_data?.qr_code_base64 || null,
+                transaction_id: paymentData.point_of_interaction?.transaction_data?.transaction_id || null,
+                bank_info: paymentData.point_of_interaction?.transaction_data?.bank_info || null,
+                e2e_id: paymentData.point_of_interaction?.transaction_data?.e2e_id || null,
+              };
 
-              if (finalizeError) {
-                console.error("❌ Erro ao finalizar venda:", finalizeError);
-                
-                // Fallback: atualizar manualmente
-                console.log("🔄 Tentando fallback manual...");
-                
-                // Atualizar números para vendido
-                const { error: updateNumbersError } = await supabase
-                  .from('raffle_numbers')
-                  .update({
-                    status: 'vendido',
-                    sold_to: transaction.user_id,
-                    sold_at: new Date().toISOString(),
-                    reserved_by: null,
-                    reserved_at: null,
-                    reservation_expires_at: null,
-                    updated_at: new Date().toISOString()
-                  })
-                  .in('numero', transaction.numeros_comprados);
+              console.log("📄 Dados do comprovante PIX:", comprovanteData);
 
-                if (updateNumbersError) {
-                  console.error("❌ Erro no fallback de números:", updateNumbersError);
-                  return new Response("Erro ao atualizar números", { status: 500, headers: corsHeaders });
-                }
+              // Atualizar números para vendido
+              const { error: updateNumbersError } = await supabase
+                .from('raffle_numbers')
+                .update({
+                  status: 'vendido',
+                  sold_to: transaction.user_id,
+                  sold_at: new Date().toISOString(),
+                  reserved_by: null,
+                  reserved_at: null,
+                  reservation_expires_at: null,
+                  updated_at: new Date().toISOString()
+                })
+                .in('numero', transaction.numeros_comprados);
 
-                // Atualizar transação
-                const { error: updateTransactionError } = await supabase
-                  .from('transactions')
-                  .update({
-                    status: 'pago',
-                    data_pagamento: new Date().toISOString(),
-                    confirmacao_enviada: true,
-                    data_confirmacao: new Date().toISOString(),
-                  })
-                  .eq('id', transaction.id);
+              if (updateNumbersError) {
+                console.error("❌ Erro ao atualizar números:", updateNumbersError);
+              }
 
-                if (updateTransactionError) {
-                  console.error("❌ Erro ao atualizar transação:", updateTransactionError);
-                }
+              // Atualizar transação com dados do comprovante PIX
+              const { error: updateTransactionError } = await supabase
+                .from('transactions')
+                .update({
+                  status: 'pago',
+                  data_pagamento: new Date().toISOString(),
+                  data_aprovacao_pix: paymentData.date_approved,
+                  confirmacao_enviada: true,
+                  data_confirmacao: new Date().toISOString(),
+                  mercadopago_payment_id: paymentId.toString(),
+                  comprovante_url: comprovanteData.ticket_url,
+                  qr_code_pix: comprovanteData.qr_code,
+                  qr_code_base64: comprovanteData.qr_code_base64,
+                  dados_comprovante: {
+                    ...comprovanteData,
+                    payment_data: {
+                      id: paymentData.id,
+                      status: paymentData.status,
+                      status_detail: paymentData.status_detail,
+                      transaction_amount: paymentData.transaction_amount,
+                      currency_id: paymentData.currency_id,
+                      date_approved: paymentData.date_approved,
+                      date_created: paymentData.date_created,
+                      description: paymentData.description,
+                      external_reference: paymentData.external_reference,
+                      fee_details: paymentData.fee_details,
+                      money_release_date: paymentData.money_release_date,
+                      payer: paymentData.payer,
+                      payment_method: paymentData.payment_method,
+                    }
+                  }
+                })
+                .eq('id', transaction.id);
+
+              if (updateTransactionError) {
+                console.error("❌ Erro ao atualizar transação:", updateTransactionError);
+              } else {
+                console.log("✅ Transação atualizada com dados do comprovante PIX!");
               }
 
               console.log("✅ Venda finalizada com sucesso!");

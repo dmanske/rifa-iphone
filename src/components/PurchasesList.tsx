@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, Clock, X, Download, Eye, EyeOff } from 'lucide-react';
+import { CheckCircle, Clock, X, Download, Eye, EyeOff, Receipt } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -10,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import PixProofModal from './PixProofModal';
 
 interface Purchase {
   id: string;
@@ -20,13 +22,22 @@ interface Purchase {
   valor_total: number;
   metodo_pagamento: string;
   data_transacao: string;
+  data_pagamento: string | null;
+  data_aprovacao_pix: string | null;
   status: 'pago' | 'pendente' | 'processando' | 'cancelado' | 'expirado';
+  comprovante_url: string | null;
+  qr_code_pix: string | null;
+  qr_code_base64: string | null;
+  mercadopago_payment_id: string | null;
+  dados_comprovante: any;
 }
 
 const PurchasesList: React.FC = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSensitiveData, setShowSensitiveData] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Purchase | null>(null);
+  const [showProofModal, setShowProofModal] = useState(false);
   const { toast } = useToast();
 
   const fetchPurchases = async () => {
@@ -93,11 +104,16 @@ const PurchasesList: React.FC = () => {
     }
   };
 
+  const handleViewProof = (purchase: Purchase) => {
+    setSelectedTransaction(purchase);
+    setShowProofModal(true);
+  };
+
   const exportToCSV = () => {
     const csvContent = [
-      "Nome,Email,Telefone,Números,Valor Total,Método,Status,Data",
+      "Nome,Email,Telefone,Números,Valor Total,Método,Status,Data,Comprovante URL,MP Payment ID",
       ...purchases.map(p => 
-        `"${p.nome}","${p.email}","${p.telefone || ''}","${p.numeros_comprados.join(', ')}","${p.valor_total}","${p.metodo_pagamento}","${p.status}","${new Date(p.data_transacao).toLocaleString('pt-BR')}"`
+        `"${p.nome}","${p.email}","${p.telefone || ''}","${p.numeros_comprados.join(', ')}","${p.valor_total}","${p.metodo_pagamento}","${p.status}","${new Date(p.data_transacao).toLocaleString('pt-BR')}","${p.comprovante_url || ''}","${p.mercadopago_payment_id || ''}"`
       )
     ].join("\n");
 
@@ -160,6 +176,12 @@ const PurchasesList: React.FC = () => {
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const hasPixProof = (purchase: Purchase) => {
+    return purchase.status === 'pago' && 
+           purchase.metodo_pagamento === 'pix' && 
+           (purchase.comprovante_url || purchase.qr_code_base64);
   };
 
   const totalVendido = purchases
@@ -247,6 +269,7 @@ const PurchasesList: React.FC = () => {
                 <TableHead>Método</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data</TableHead>
+                <TableHead>Comprovante</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -308,6 +331,24 @@ const PurchasesList: React.FC = () => {
                     <div className="text-sm text-gray-900">
                       {new Date(purchase.data_transacao).toLocaleString('pt-BR')}
                     </div>
+                    {purchase.data_aprovacao_pix && (
+                      <div className="text-xs text-green-600">
+                        Aprovado: {new Date(purchase.data_aprovacao_pix).toLocaleString('pt-BR')}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {hasPixProof(purchase) ? (
+                      <button
+                        onClick={() => handleViewProof(purchase)}
+                        className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs transition-colors"
+                      >
+                        <Receipt className="w-3 h-3" />
+                        <span>Ver</span>
+                      </button>
+                    ) : (
+                      <span className="text-xs text-gray-400">N/A</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {purchase.status === 'pendente' && (
@@ -339,6 +380,18 @@ const PurchasesList: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* PIX Proof Modal */}
+      {selectedTransaction && (
+        <PixProofModal
+          isOpen={showProofModal}
+          onClose={() => {
+            setShowProofModal(false);
+            setSelectedTransaction(null);
+          }}
+          transaction={selectedTransaction}
+        />
+      )}
     </div>
   );
 };

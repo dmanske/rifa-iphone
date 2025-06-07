@@ -178,17 +178,23 @@ export type Database = {
       }
       transactions: {
         Row: {
+          comprovante_url: string | null
           confirmacao_enviada: boolean
           created_at: string
+          dados_comprovante: Json | null
+          data_aprovacao_pix: string | null
           data_confirmacao: string | null
           data_pagamento: string | null
           data_transacao: string
           email: string
           id: string
+          mercadopago_payment_id: string | null
           metodo_pagamento: string
           nome: string
           numeros_comprados: number[]
           payment_id: string | null
+          qr_code_base64: string | null
+          qr_code_pix: string | null
           status: Database["public"]["Enums"]["payment_status"]
           stripe_session_id: string | null
           telefone: string | null
@@ -198,17 +204,23 @@ export type Database = {
           valor_total: number
         }
         Insert: {
+          comprovante_url?: string | null
           confirmacao_enviada?: boolean
           created_at?: string
+          dados_comprovante?: Json | null
+          data_aprovacao_pix?: string | null
           data_confirmacao?: string | null
           data_pagamento?: string | null
           data_transacao?: string
           email: string
           id?: string
+          mercadopago_payment_id?: string | null
           metodo_pagamento: string
           nome: string
           numeros_comprados: number[]
           payment_id?: string | null
+          qr_code_base64?: string | null
+          qr_code_pix?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           stripe_session_id?: string | null
           telefone?: string | null
@@ -218,17 +230,23 @@ export type Database = {
           valor_total: number
         }
         Update: {
+          comprovante_url?: string | null
           confirmacao_enviada?: boolean
           created_at?: string
+          dados_comprovante?: Json | null
+          data_aprovacao_pix?: string | null
           data_confirmacao?: string | null
           data_pagamento?: string | null
           data_transacao?: string
           email?: string
           id?: string
+          mercadopago_payment_id?: string | null
           metodo_pagamento?: string
           nome?: string
           numeros_comprados?: number[]
           payment_id?: string | null
+          qr_code_base64?: string | null
+          qr_code_pix?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           stripe_session_id?: string | null
           telefone?: string | null
