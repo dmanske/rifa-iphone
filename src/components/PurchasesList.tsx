@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -141,12 +140,22 @@ const PurchasesList: React.FC = () => {
     setFilteredPurchases(filtered);
   };
 
-  const handleGeneratePDF = () => {
-    generateModernPDFReport(filteredPurchases);
-    toast({
-      title: "PDF Gerado com Sucesso! 🎉",
-      description: "Relatório moderno e colorido foi baixado.",
-    });
+  const handleGeneratePDF = async () => {
+    try {
+      console.log('Iniciando geração de PDF...');
+      await generateModernPDFReport(filteredPurchases);
+      toast({
+        title: "PDF Gerado com Sucesso! 🎉",
+        description: "Relatório moderno e colorido foi baixado.",
+      });
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        title: "Erro ao gerar PDF",
+        description: "Ocorreu um erro ao gerar o relatório. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   useEffect(() => {
