@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ShoppingCart, X, LogIn } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, X, LogIn, Shuffle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../hooks/useAuth';
 import Cart from './Cart';
@@ -139,25 +139,54 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
     setShowCart(true);
   };
 
-  // Classes dinâmicas para os botões com grid responsivo
+  // Funções para seleção rápida
+  const selectRandomNumbers = (count: number) => {
+    if (!user) {
+      onAuthRequired();
+      return;
+    }
+
+    const availableNumbers = [];
+    for (let i = 1; i <= 130; i++) {
+      if (!isNumberSold(i) && !isNumberInCart(i)) {
+        availableNumbers.push(i);
+      }
+    }
+
+    const remainingSlots = 10 - cartItems.length;
+    const numbersToAdd = Math.min(count, availableNumbers.length, remainingSlots);
+
+    for (let i = 0; i < numbersToAdd; i++) {
+      const randomIndex = Math.floor(Math.random() * availableNumbers.length);
+      const number = availableNumbers.splice(randomIndex, 1)[0];
+      addToCart(number);
+    }
+  };
+
+  const clearSelection = () => {
+    if (!user) return;
+    cartItems.forEach(item => removeFromCart(item.number));
+  };
+
+  // Classes dinâmicas para os botões
   const getNumberButtonClass = (number: number) => {
-    const baseClasses = 'rounded-xl font-bold transition-all duration-200 border-2 flex items-center justify-center text-center touch-manipulation';
+    const baseClasses = 'aspect-square rounded-xl font-bold transition-all duration-300 border-2 flex items-center justify-center text-center touch-manipulation relative overflow-hidden';
     
-    // Sempre mostrar números vendidos como desabilitados, independente do login
+    // Sempre mostrar números vendidos como desabilitados
     if (isNumberSold(number)) {
-      return `${baseClasses} bg-red-100 text-red-500 cursor-not-allowed border-red-200 opacity-60 h-12`;
+      return `${baseClasses} bg-red-500 text-white cursor-not-allowed border-red-600 opacity-80`;
     }
     
     // Mostrar números no carrinho apenas se o usuário estiver logado
     if (user && isNumberInCart(number)) {
-      return `${baseClasses} bg-blue-600 text-white border-blue-600 shadow-lg scale-105 h-12`;
+      return `${baseClasses} bg-gradient-to-br from-purple-600 to-blue-600 text-white border-purple-600 shadow-lg scale-105 animate-pulse`;
     }
     
-    // Números disponíveis (com indicação visual se não logado)
-    const availableClasses = `${baseClasses} bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 active:scale-95 cursor-pointer shadow-sm h-12`;
+    // Números disponíveis
+    const availableClasses = `${baseClasses} bg-white text-gray-700 border-gray-200 hover:border-purple-400 hover:bg-purple-50 hover:scale-105 active:scale-95 cursor-pointer shadow-md hover:shadow-lg`;
     
     if (!user) {
-      return `${availableClasses} opacity-75`; // Leve indicação visual de que precisa login
+      return `${availableClasses} opacity-60`; // Indicação visual de que precisa login
     }
     
     return availableClasses;
@@ -168,34 +197,34 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">Carregando números...</p>
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 flex items-center justify-center">
+        <div className="text-center bg-white rounded-2xl p-8 shadow-2xl">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg font-semibold">Carregando números...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header - Responsivo */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500">
+      {/* Header Moderno */}
+      <div className="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-40">
+        <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <button
                 onClick={onBack}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors text-white"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
+                <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <h1 className={`font-bold text-gray-900 ${isMobile ? 'text-base' : 'text-lg'}`}>
-                  Escolha seus números
+                <h1 className="text-xl font-bold text-white flex items-center gap-2">
+                  🎉 Rifa da Sorte
                 </h1>
-                <p className={`text-gray-600 ${isMobile ? 'text-xs' : 'text-xs'}`}>
-                  R$ 100,00 por número • Máx. 10 números
+                <p className="text-white/80 text-sm">
+                  Escolha seus números da sorte
                 </p>
               </div>
             </div>
@@ -204,9 +233,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
               {!user && (
                 <button
                   onClick={onAuthRequired}
-                  className={`flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors ${
-                    isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'
-                  }`}
+                  className="flex items-center space-x-1 bg-white/20 hover:bg-white/30 text-white rounded-lg px-3 py-2 text-sm transition-colors"
                 >
                   <LogIn className="w-4 h-4" />
                   <span>Login</span>
@@ -215,9 +242,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
               
               <button
                 onClick={handleCartClick}
-                className={`relative bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all duration-200 flex items-center space-x-2 ${
-                  isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2 text-sm'
-                }`}
+                className="relative bg-white/20 hover:bg-white/30 text-white rounded-xl font-semibold transition-all duration-200 flex items-center space-x-2 px-4 py-2 text-sm"
               >
                 <ShoppingCart className="w-4 h-4" />
                 <span>Carrinho</span>
@@ -234,119 +259,152 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
 
       {/* Alerta de Login */}
       {!user && (
-        <div className="bg-blue-50 border border-blue-200 mx-4 mt-4 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <LogIn className="w-5 h-5 text-blue-600" />
-              <div>
-                <p className="text-blue-800 font-medium text-sm">Login necessário</p>
-                <p className="text-blue-700 text-xs">
-                  Faça login para escolher seus números
-                </p>
+        <div className="mx-4 mt-4">
+          <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <LogIn className="w-5 h-5 text-white" />
+                <div>
+                  <p className="text-white font-medium text-sm">Login necessário</p>
+                  <p className="text-white/80 text-xs">
+                    Faça login para escolher seus números
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={onAuthRequired}
+                className="bg-white/30 hover:bg-white/40 text-white px-3 py-2 rounded-lg font-medium transition-colors text-sm"
+              >
+                Entrar
+              </button>
             </div>
-            <button
-              onClick={onAuthRequired}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-medium transition-colors text-sm"
-            >
-              Entrar
-            </button>
           </div>
         </div>
       )}
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Legend - Compacta e responsiva */}
-        <div className="mb-6">
-          <div className="flex flex-wrap justify-center gap-4 text-xs">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-white border-2 border-gray-200 rounded"></div>
-              <span className="text-gray-600">Disponível</span>
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        {/* Container Principal com Fundo Branco */}
+        <div className="bg-white rounded-2xl shadow-2xl p-6">
+          {/* Stats Modernos */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="text-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
+              <div className="text-2xl font-bold text-blue-600">{130 - soldNumbers.length}</div>
+              <div className="text-xs text-blue-600 font-medium">Disponíveis</div>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-blue-600 rounded"></div>
-              <span className="text-gray-600">Selecionado</span>
+            <div className="text-center bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4">
+              <div className="text-2xl font-bold text-red-600">{soldNumbers.length}</div>
+              <div className="text-xs text-red-600 font-medium">Vendidos</div>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-red-100 border-2 border-red-200 rounded"></div>
-              <span className="text-gray-600">Vendido</span>
+            <div className="text-center bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4">
+              <div className="text-2xl font-bold text-green-600">R$ 100</div>
+              <div className="text-xs text-green-600 font-medium">Por número</div>
             </div>
           </div>
-        </div>
 
-        {/* Grid Principal - FORÇAR 7 colunas no mobile */}
-        <div className="bg-white rounded-2xl shadow-sm border p-4 sm:p-6">
-          <div className="mb-4 text-center">
-            <span className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
-              Números da Sorte • 001 - 130
-            </span>
-          </div>
-          
-          {/* Grid com largura fixa para mobile - EXATAMENTE 7 colunas */}
-          <div className={`gap-2 sm:gap-3 ${
-            isMobile 
-              ? 'grid' // Mobile: usar CSS personalizado
-              : 'grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))]' // Desktop: auto-fit
-          }`}
-          style={isMobile ? {
-            display: 'grid',
-            gridTemplateColumns: 'repeat(7, 1fr)', // FORÇAR 7 colunas iguais
-            gap: '8px'
-          } : {}}
-          >
+          {/* Quick Select Buttons */}
+          {user && (
+            <div className="flex flex-wrap gap-2 mb-6 justify-center">
+              <button
+                onClick={() => selectRandomNumbers(1)}
+                className="flex items-center space-x-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium transition-all"
+              >
+                <Shuffle className="w-3 h-3" />
+                <span>+1 Aleatório</span>
+              </button>
+              <button
+                onClick={() => selectRandomNumbers(5)}
+                className="flex items-center space-x-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium transition-all"
+              >
+                <Shuffle className="w-3 h-3" />
+                <span>+5 Aleatórios</span>
+              </button>
+              <button
+                onClick={() => selectRandomNumbers(10)}
+                className="flex items-center space-x-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium transition-all"
+              >
+                <Shuffle className="w-3 h-3" />
+                <span>+10 Aleatórios</span>
+              </button>
+              <button
+                onClick={clearSelection}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-full text-sm font-medium transition-all"
+              >
+                Limpar
+              </button>
+            </div>
+          )}
+
+          {/* Grid de Números - 5 colunas no mobile */}
+          <div className="grid grid-cols-5 gap-2 mb-6">
             {numbers.map((number) => (
               <button
                 key={number}
                 onClick={() => handleNumberClick(number)}
-                disabled={isNumberSold(number)} // Sempre desabilitar números vendidos
-                className={`
-                  ${getNumberButtonClass(number)}
-                  ${isMobile ? 'text-xs min-w-0' : 'text-sm sm:text-base'}
-                `}
+                disabled={isNumberSold(number)}
+                className={getNumberButtonClass(number)}
               >
                 {number.toString().padStart(3, '0')}
+                {isNumberSold(number) && (
+                  <span className="absolute top-1 right-1 text-xs">✗</span>
+                )}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* Stats Cards - Layout responsivo */}
-        <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-            <div className="font-bold text-blue-600 text-lg sm:text-xl">
-              {130 - soldNumbers.length}
+          {/* Selection Info */}
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-4 mb-6 text-center">
+            <div className="text-lg text-blue-700 mb-2">
+              Números selecionados: <span className="font-bold">{user ? cartItems.length : 0}</span>
             </div>
-            <div className="text-xs text-gray-600">Disponíveis</div>
+            <div className="text-2xl font-bold text-blue-800">
+              Total: R$ {user ? (cartItems.length * 100).toLocaleString('pt-BR') : '0'}
+            </div>
           </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-            <div className="font-bold text-red-600 text-lg sm:text-xl">
-              {soldNumbers.length}
-            </div>
-            <div className="text-xs text-gray-600">Vendidos</div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={clearSelection}
+              disabled={!user || cartItems.length === 0}
+              className="flex-1 bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 py-3 rounded-xl font-semibold transition-all"
+            >
+              Limpar Seleção
+            </button>
+            <button
+              onClick={handleCartClick}
+              disabled={!user || cartItems.length === 0}
+              className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-all"
+            >
+              Comprar Números
+            </button>
           </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-            <div className="font-bold text-green-600 text-lg sm:text-xl">
-              {user ? cartItems.length : 0}
+
+          {/* Legend Visual */}
+          <div className="flex justify-center gap-6 mt-6 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-white border-2 border-gray-200 rounded"></div>
+              <span className="text-gray-600">Disponível</span>
             </div>
-            <div className="text-xs text-gray-600">No Carrinho</div>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-            <div className="font-bold text-purple-600 text-lg sm:text-xl">
-              R$ {user ? (cartItems.length * 100).toLocaleString('pt-BR') : '0'}
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gradient-to-br from-purple-600 to-blue-600 rounded"></div>
+              <span className="text-gray-600">Selecionado</span>
             </div>
-            <div className="text-xs text-gray-600">Total</div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-red-500 rounded"></div>
+              <span className="text-gray-600">Vendido</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Cart Modal - Adaptado para mobile */}
+      {/* Cart Modal */}
       {showCart && user && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center">
           <div className={`bg-white w-full overflow-y-auto ${
             isMobile 
-              ? 'rounded-t-2xl max-h-[90vh]' // Mobile: modal bottom sheet
-              : 'rounded-2xl max-w-2xl max-h-[90vh]' // Desktop: modal centralizado
+              ? 'rounded-t-2xl max-h-[90vh]' 
+              : 'rounded-2xl max-w-2xl max-h-[90vh]'
           }`}>
             <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
               <h2 className="text-lg font-bold text-gray-900">Meu Carrinho</h2>
