@@ -275,7 +275,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
           </div>
         </div>
 
-        {/* Grid Principal - Layout Responsivo com 7 colunas no mobile */}
+        {/* Grid Principal - Exatamente 7 colunas no mobile */}
         <div className="bg-white rounded-2xl shadow-sm border p-4 sm:p-6">
           <div className="mb-4 text-center">
             <span className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
@@ -283,14 +283,10 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
             </span>
           </div>
           
-          {/* 
-            Grid responsivo:
-            - Mobile: 7 colunas fixas
-            - Desktop: auto-fit para se ajustar automaticamente
-          */}
+          {/* Grid fixo: 7 colunas no mobile, auto-fit no desktop */}
           <div className={`gap-2 sm:gap-3 ${
             isMobile 
-              ? 'grid grid-cols-7' // Mobile: 7 colunas fixas
+              ? 'grid grid-cols-7' // Mobile: exatamente 7 colunas
               : 'grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))]' // Desktop: auto-fit
           }`}>
             {numbers.map((number) => (
@@ -300,7 +296,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
                 disabled={isNumberSold(number)} // Sempre desabilitar números vendidos
                 className={`
                   ${getNumberButtonClass(number)}
-                  text-sm sm:text-base
+                  ${isMobile ? 'text-xs' : 'text-sm sm:text-base'}
                 `}
               >
                 {number.toString().padStart(3, '0')}
