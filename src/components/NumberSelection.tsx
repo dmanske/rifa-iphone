@@ -138,9 +138,14 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
     setShowCart(true);
   };
 
+  // Layout responsivo para botões - Mobile otimizado
   const getNumberButtonClass = (number: number) => {
     const baseClasses = 'rounded-xl font-bold transition-all duration-200 border-2 flex items-center justify-center text-center';
-    const sizeClasses = isMobile ? 'h-12 text-sm' : 'h-16 text-base';
+    
+    // Mobile: botões maiores e mais espaçados | Desktop: layout original
+    const sizeClasses = isMobile 
+      ? 'h-14 w-full text-lg min-h-[56px] touch-manipulation' // Mobile: botões maiores para toque
+      : 'h-16 text-base'; // Desktop: mantém tamanho original
     
     if (isNumberSold(number)) {
       return `${baseClasses} ${sizeClasses} bg-red-100 text-red-500 cursor-not-allowed border-red-200 opacity-60`;
@@ -151,17 +156,29 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
     return `${baseClasses} ${sizeClasses} bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 active:scale-95 cursor-pointer shadow-sm`;
   };
 
-  // Organizar números em linhas de 10
-  const organizeNumbersInRows = () => {
-    const rows = [];
-    for (let i = 1; i <= 130; i += 10) {
-      const row = [];
-      for (let j = i; j < i + 10 && j <= 130; j++) {
-        row.push(j);
+  // Organizar números em linhas - Layout responsivo
+  const organizeNumbersForDisplay = () => {
+    const numbers = Array.from({ length: 130 }, (_, i) => i + 1);
+    
+    if (isMobile) {
+      // Mobile: organizar em grupos de 6 números (2x3 grid)
+      const groups = [];
+      for (let i = 0; i < numbers.length; i += 6) {
+        groups.push(numbers.slice(i, i + 6));
       }
-      rows.push(row);
+      return groups;
+    } else {
+      // Desktop: manter layout original (10 por linha)
+      const rows = [];
+      for (let i = 1; i <= 130; i += 10) {
+        const row = [];
+        for (let j = i; j < i + 10 && j <= 130; j++) {
+          row.push(j);
+        }
+        rows.push(row);
+      }
+      return rows;
     }
-    return rows;
   };
 
   if (loading) {
@@ -175,11 +192,11 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
     );
   }
 
-  const numberRows = organizeNumbersInRows();
+  const numberGroups = organizeNumbersForDisplay();
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header - Responsivo */}
       <div className="bg-white shadow-sm border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
@@ -191,8 +208,12 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
               <div>
-                <h1 className="text-lg font-bold text-gray-900">Escolha seus números</h1>
-                <p className="text-xs text-gray-600">R$ 100,00 por número • Máx. 10 números</p>
+                <h1 className={`font-bold text-gray-900 ${isMobile ? 'text-base' : 'text-lg'}`}>
+                  Escolha seus números
+                </h1>
+                <p className={`text-gray-600 ${isMobile ? 'text-xs' : 'text-xs'}`}>
+                  R$ 100,00 por número • Máx. 10 números
+                </p>
               </div>
             </div>
             
@@ -200,7 +221,9 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
               {!user && (
                 <button
                   onClick={onAuthRequired}
-                  className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                  className={`flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors ${
+                    isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'
+                  }`}
                 >
                   <LogIn className="w-4 h-4" />
                   <span>Login</span>
@@ -209,10 +232,12 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
               
               <button
                 onClick={handleCartClick}
-                className="relative bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold transition-all duration-200 flex items-center space-x-2"
+                className={`relative bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all duration-200 flex items-center space-x-2 ${
+                  isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2 text-sm'
+                }`}
               >
                 <ShoppingCart className="w-4 h-4" />
-                <span className="text-sm">Carrinho</span>
+                <span>Carrinho</span>
                 {cartItems.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
                     {cartItems.length}
@@ -247,11 +272,11 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
         </div>
       )}
 
-      {/* Numbers Grid Mobile Optimized */}
+      {/* Numbers Grid - Layout Responsivo Otimizado */}
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Legend */}
+        {/* Legend - Compacta no mobile */}
         <div className="mb-6">
-          <div className="flex flex-wrap gap-4 text-xs">
+          <div className={`flex gap-4 text-xs ${isMobile ? 'flex-wrap justify-center' : 'flex-row'}`}>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-white border-2 border-gray-200 rounded"></div>
               <span className="text-gray-600">Disponível</span>
@@ -267,20 +292,27 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
           </div>
         </div>
 
-        {/* Grid com layout otimizado para mobile */}
-        <div className="space-y-6">
-          {numberRows.map((row, rowIndex) => (
-            <div key={rowIndex} className="bg-white rounded-2xl shadow-sm border p-4">
-              {/* Header da linha - range dos números */}
+        {/* Grid Principal - Layout Adaptativo */}
+        <div className={`space-y-6 ${isMobile ? 'space-y-4' : ''}`}>
+          {numberGroups.map((group, groupIndex) => (
+            <div key={groupIndex} className="bg-white rounded-2xl shadow-sm border p-4">
+              {/* Header do grupo */}
               <div className="mb-4 text-center">
                 <span className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
-                  {row[0].toString().padStart(3, '0')} - {row[row.length - 1].toString().padStart(3, '0')}
+                  {isMobile 
+                    ? `${group[0].toString().padStart(3, '0')} - ${group[group.length - 1].toString().padStart(3, '0')}`
+                    : `${group[0].toString().padStart(3, '0')} - ${group[group.length - 1].toString().padStart(3, '0')}`
+                  }
                 </span>
               </div>
               
-              {/* Grid responsivo dos números */}
-              <div className={`grid gap-2 ${isMobile ? 'grid-cols-5' : 'grid-cols-10'}`}>
-                {row.map((number) => (
+              {/* Grid de números - Responsivo */}
+              <div className={`grid gap-3 ${
+                isMobile 
+                  ? 'grid-cols-2 sm:grid-cols-3' // Mobile: 2 colunas, SM: 3 colunas
+                  : 'grid-cols-10' // Desktop: 10 colunas (original)
+              }`}>
+                {group.map((number) => (
                   <button
                     key={number}
                     onClick={() => handleNumberClick(number)}
@@ -288,6 +320,7 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
                     className={`
                       ${getNumberButtonClass(number)}
                       ${!user ? 'opacity-50' : ''}
+                      ${isMobile ? 'active:scale-95 active:bg-blue-100' : ''} // Feedback de toque mobile
                     `}
                   >
                     {number.toString().padStart(3, '0')}
@@ -298,22 +331,29 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
           ))}
         </div>
 
-        {/* Stats Cards */}
-        <div className="mt-8 grid grid-cols-2 gap-4">
+        {/* Stats Cards - Layout responsivo */}
+        <div className={`mt-8 grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}`}>
           <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-            <div className="text-xl font-bold text-blue-600">{130 - soldNumbers.length}</div>
+            <div className={`font-bold text-blue-600 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+              {130 - soldNumbers.length}
+            </div>
             <div className="text-xs text-gray-600">Disponíveis</div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-            <div className="text-xl font-bold text-red-600">{soldNumbers.length}</div>
+            <div className={`font-bold text-red-600 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+              {soldNumbers.length}
+            </div>
             <div className="text-xs text-gray-600">Vendidos</div>
           </div>
+          {/* Mobile: Segunda linha para os próximos 2 cards */}
           <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-            <div className="text-xl font-bold text-green-600">{cartItems.length}</div>
+            <div className={`font-bold text-green-600 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+              {cartItems.length}
+            </div>
             <div className="text-xs text-gray-600">No Carrinho</div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
-            <div className="text-xl font-bold text-purple-600">
+            <div className={`font-bold text-purple-600 ${isMobile ? 'text-lg' : 'text-xl'}`}>
               R$ {(cartItems.length * 100).toLocaleString('pt-BR')}
             </div>
             <div className="text-xs text-gray-600">Total</div>
@@ -321,10 +361,14 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
         </div>
       </div>
 
-      {/* Cart Modal */}
+      {/* Cart Modal - Adaptado para mobile */}
       {showCart && user && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl sm:max-h-[90vh] max-h-[85vh] overflow-y-auto">
+          <div className={`bg-white w-full overflow-y-auto ${
+            isMobile 
+              ? 'rounded-t-2xl max-h-[90vh]' // Mobile: modal bottom sheet
+              : 'rounded-2xl max-w-2xl max-h-[90vh]' // Desktop: modal centralizado
+          }`}>
             <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
               <h2 className="text-lg font-bold text-gray-900">Meu Carrinho</h2>
               <button
