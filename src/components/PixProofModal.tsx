@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, Download, Calendar, CreditCard, Hash, Building2 } from 'lucide-react';
+import { X, Download, Calendar, CreditCard, Hash, Building2, FileText } from 'lucide-react';
 
 interface PixProofModalProps {
   isOpen: boolean;
@@ -39,6 +39,14 @@ const PixProofModal: React.FC<PixProofModalProps> = ({ isOpen, onClose, transact
   const handleDownloadProof = () => {
     if (transaction.comprovante_url) {
       window.open(transaction.comprovante_url, '_blank');
+    }
+  };
+
+  const handleDownloadMercadoPagoProof = () => {
+    if (transaction.mercadopago_payment_id) {
+      // URL para baixar comprovante oficial do MercadoPago
+      const proofUrl = `https://www.mercadopago.com.br/comprovantes/${transaction.mercadopago_payment_id}`;
+      window.open(proofUrl, '_blank');
     }
   };
 
@@ -178,6 +186,16 @@ const PixProofModal: React.FC<PixProofModalProps> = ({ isOpen, onClose, transact
                 className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex-1"
               >
                 <Download className="w-4 h-4" />
+                <span>Comprovante PIX</span>
+              </button>
+            )}
+
+            {transaction.mercadopago_payment_id && (
+              <button
+                onClick={handleDownloadMercadoPagoProof}
+                className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors flex-1"
+              >
+                <FileText className="w-4 h-4" />
                 <span>Comprovante Oficial</span>
               </button>
             )}
