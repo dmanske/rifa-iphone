@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, ExternalLink } from 'lucide-react';
 import { handleDownloadProof, handleDownloadMercadoPagoProof } from '@/utils/pixProofUtils';
 
 interface PixProofActionsProps {
@@ -31,7 +31,7 @@ const PixProofActions: React.FC<PixProofActionsProps> = ({
           onClick={() => handleDownloadMercadoPagoProof(mercadopagoPaymentId)}
           className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors flex-1"
         >
-          <FileText className="w-4 h-4" />
+          <ExternalLink className="w-4 h-4" />
           <span>Comprovante Oficial</span>
         </button>
       )}

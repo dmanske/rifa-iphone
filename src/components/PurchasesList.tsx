@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, Clock, X, Download, Eye, EyeOff, Receipt } from 'lucide-react';
+import { CheckCircle, Clock, X, Download, Eye, EyeOff, Receipt, Search, FileText } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import {
   Table,
   TableBody,
@@ -33,10 +36,12 @@ interface Purchase {
 
 const PurchasesList: React.FC = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [filteredPurchases, setFilteredPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSensitiveData, setShowSensitiveData] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Purchase | null>(null);
   const [showProofModal, setShowProofModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   const fetchPurchases = async () => {
@@ -57,6 +62,7 @@ const PurchasesList: React.FC = () => {
       }
 
       setPurchases(data || []);
+      setFilteredPurchases(data || []);
     } catch (error) {
       console.error('Erro inesperado:', error);
       toast({
@@ -112,10 +118,88 @@ const PurchasesList: React.FC = () => {
     setShowProofModal(true);
   };
 
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    if (!term.trim()) {
+      setFilteredPurchases(purchases);
+      return;
+    }
+
+    const filtered = purchases.filter(purchase => 
+      purchase.nome.toLowerCase().includes(term.toLowerCase()) ||
+      purchase.email.toLowerCase().includes(term.toLowerCase()) ||
+      purchase.telefone?.toLowerCase().includes(term.toLowerCase()) ||
+      purchase.numeros_comprados.some(num => num.toString().includes(term)) ||
+      purchase.status.toLowerCase().includes(term.toLowerCase()) ||
+      purchase.metodo_pagamento.toLowerCase().includes(term.toLowerCase())
+    );
+    
+    setFilteredPurchases(filtered);
+  };
+
+  const generatePDFReport = () => {
+    const doc = new jsPDF();
+    
+    // Título
+    doc.setFontSize(18);
+    doc.text('Relatório Completo de Vendas', 14, 22);
+    
+    // Data de geração
+    doc.setFontSize(12);
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 32);
+    
+    // Estatísticas
+    const totalVendido = purchases
+      .filter(p => p.status === 'pago')
+      .reduce((sum, p) => sum + Number(p.valor_total), 0);
+    
+    const totalPix = purchases
+      .filter(p => p.status === 'pago' && p.metodo_pagamento === 'pix')
+      .reduce((sum, p) => sum + Number(p.valor_total), 0);
+    
+    const totalCartao = purchases
+      .filter(p => p.status === 'pago' && p.metodo_pagamento === 'cartao')
+      .reduce((sum, p) => sum + Number(p.valor_total), 0);
+
+    doc.setFontSize(14);
+    doc.text('Resumo Executivo:', 14, 45);
+    doc.setFontSize(11);
+    doc.text(`Total de Compras: ${purchases.length}`, 14, 55);
+    doc.text(`Total Arrecadado: R$ ${totalVendido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 14, 65);
+    doc.text(`Total Pix: R$ ${totalPix.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 14, 75);
+    doc.text(`Total Cartão: R$ ${totalCartao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 14, 85);
+
+    // Tabela de transações
+    const tableData = purchases.map(p => [
+      p.nome,
+      p.email,
+      p.numeros_comprados.join(', '),
+      `R$ ${Number(p.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      p.metodo_pagamento === 'pix' ? 'Pix' : 'Cartão',
+      p.status,
+      new Date(p.data_transacao).toLocaleDateString('pt-BR')
+    ]);
+
+    (doc as any).autoTable({
+      head: [['Nome', 'Email', 'Números', 'Valor', 'Método', 'Status', 'Data']],
+      body: tableData,
+      startY: 95,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+    });
+
+    doc.save(`relatorio_rifa_${new Date().toISOString().split('T')[0]}.pdf`);
+    
+    toast({
+      title: "PDF Gerado",
+      description: "Relatório completo foi baixado com sucesso.",
+    });
+  };
+
   const exportToCSV = () => {
     const csvContent = [
       "Nome,Email,Telefone,Números,Valor Total,Método,Status,Data,Comprovante URL,MP Payment ID",
-      ...purchases.map(p => 
+      ...filteredPurchases.map(p => 
         `"${p.nome}","${p.email}","${p.telefone || ''}","${p.numeros_comprados.join(', ')}","${p.valor_total}","${p.metodo_pagamento}","${p.status}","${new Date(p.data_transacao).toLocaleString('pt-BR')}","${p.comprovante_url || ''}","${p.mercadopago_payment_id || ''}"`
       )
     ].join("\n");
@@ -154,6 +238,10 @@ const PurchasesList: React.FC = () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  useEffect(() => {
+    handleSearch(searchTerm);
+  }, [purchases, searchTerm]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -196,15 +284,15 @@ const PurchasesList: React.FC = () => {
     return isPixPayment && isPaid;
   };
 
-  const totalVendido = purchases
+  const totalVendido = filteredPurchases
     .filter(p => p.status === 'pago')
     .reduce((sum, p) => sum + Number(p.valor_total), 0);
 
-  const totalPix = purchases
+  const totalPix = filteredPurchases
     .filter(p => p.status === 'pago' && p.metodo_pagamento === 'pix')
     .reduce((sum, p) => sum + Number(p.valor_total), 0);
 
-  const totalCartao = purchases
+  const totalCartao = filteredPurchases
     .filter(p => p.status === 'pago' && p.metodo_pagamento === 'cartao')
     .reduce((sum, p) => sum + Number(p.valor_total), 0);
 
@@ -222,7 +310,7 @@ const PurchasesList: React.FC = () => {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl shadow-sm border">
-          <div className="text-2xl font-bold text-blue-600">{purchases.length}</div>
+          <div className="text-2xl font-bold text-blue-600">{filteredPurchases.length}</div>
           <div className="text-sm text-gray-600">Total de Compras</div>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border">
@@ -245,11 +333,21 @@ const PurchasesList: React.FC = () => {
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Lista de Compras ({purchases.length})
-        </h3>
+      {/* Search and Controls */}
+      <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+        <div className="flex-1 max-w-md">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              type="text"
+              placeholder="Buscar por nome, email, telefone, números..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+        
         <div className="flex gap-2">
           <button
             onClick={() => setShowSensitiveData(!showSensitiveData)}
@@ -258,6 +356,15 @@ const PurchasesList: React.FC = () => {
             {showSensitiveData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             <span>{showSensitiveData ? 'Ocultar' : 'Mostrar'} Dados</span>
           </button>
+          
+          <button
+            onClick={generatePDFReport}
+            className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+          >
+            <FileText className="w-4 h-4" />
+            <span>PDF Completo</span>
+          </button>
+          
           <button
             onClick={exportToCSV}
             className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
@@ -266,6 +373,12 @@ const PurchasesList: React.FC = () => {
             <span>Exportar CSV</span>
           </button>
         </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border p-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Lista de Compras ({filteredPurchases.length} {searchTerm ? 'filtradas' : 'total'})
+        </h3>
       </div>
 
       {/* Table */}
@@ -286,7 +399,7 @@ const PurchasesList: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {purchases.map((purchase) => (
+              {filteredPurchases.map((purchase) => (
                 <TableRow key={purchase.id}>
                   <TableCell>
                     <div className="font-medium text-gray-900">
@@ -388,9 +501,9 @@ const PurchasesList: React.FC = () => {
           </Table>
         </div>
         
-        {purchases.length === 0 && (
+        {filteredPurchases.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            Nenhuma compra encontrada.
+            {searchTerm ? 'Nenhuma compra encontrada para a busca.' : 'Nenhuma compra encontrada.'}
           </div>
         )}
       </div>
