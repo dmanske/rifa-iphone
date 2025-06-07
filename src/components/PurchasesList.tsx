@@ -424,7 +424,7 @@ const PurchasesList: React.FC = () => {
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border">
           <div className="text-2xl font-bold text-green-600">
-            R$ {totalPix.toLocaleString('pt-BR', { minimumFraction Digits: 2 })}
+            R$ {totalPix.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
           <div className="text-sm text-gray-600">Total Pix</div>
         </div>
