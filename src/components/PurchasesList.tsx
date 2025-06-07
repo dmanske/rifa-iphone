@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -95,6 +94,14 @@ const PurchasesList: React.FC = () => {
         )
       );
 
+      setFilteredPurchases(prev => 
+        prev.map(purchase => 
+          purchase.id === purchaseId 
+            ? { ...purchase, status: newStatus }
+            : purchase
+        )
+      );
+
       toast({
         title: "Status atualizado",
         description: `Pagamento marcado como ${newStatus}.`,
@@ -146,31 +153,31 @@ const PurchasesList: React.FC = () => {
     
     const filtered = purchases.filter(purchase => {
       // Busca no nome
-      if (purchase.nome.toLowerCase().includes(searchLower)) return true;
+      if (purchase.nome?.toLowerCase().includes(searchLower)) return true;
       
       // Busca no email
-      if (purchase.email.toLowerCase().includes(searchLower)) return true;
+      if (purchase.email?.toLowerCase().includes(searchLower)) return true;
       
       // Busca no telefone
       if (purchase.telefone && purchase.telefone.toLowerCase().includes(searchLower)) return true;
       
       // Busca nos números comprados
-      if (purchase.numeros_comprados.some(num => 
+      if (purchase.numeros_comprados && purchase.numeros_comprados.some(num => 
         num.toString().includes(term) || 
         num.toString().padStart(3, '0').includes(term)
       )) return true;
       
       // Busca no status
-      if (purchase.status.toLowerCase().includes(searchLower)) return true;
+      if (purchase.status?.toLowerCase().includes(searchLower)) return true;
       
       // Busca no método de pagamento
-      if (purchase.metodo_pagamento.toLowerCase().includes(searchLower)) return true;
+      if (purchase.metodo_pagamento?.toLowerCase().includes(searchLower)) return true;
       
       // Busca no valor
-      if (purchase.valor_total.toString().includes(term)) return true;
+      if (purchase.valor_total?.toString().includes(term)) return true;
       
       // Busca no ID da transação
-      if (purchase.id.toLowerCase().includes(searchLower)) return true;
+      if (purchase.id?.toLowerCase().includes(searchLower)) return true;
       
       // Busca no ID do MercadoPago
       if (purchase.mercadopago_payment_id && purchase.mercadopago_payment_id.includes(term)) return true;
@@ -184,14 +191,14 @@ const PurchasesList: React.FC = () => {
   const generateModernPDFReport = () => {
     const doc = new jsPDF();
     
-    // Configurar cores
+    // Configurar cores (RGB values)
     const primaryColor = [59, 130, 246]; // blue-600
     const secondaryColor = [34, 197, 94]; // green-500
     const textColor = [31, 41, 55]; // gray-800
     const lightGray = [249, 250, 251]; // gray-50
     
     // Cabeçalho com cores
-    doc.setFillColor(...primaryColor);
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.rect(0, 0, 210, 40, 'F');
     
     // Título em branco
@@ -206,37 +213,37 @@ const PurchasesList: React.FC = () => {
     doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 20, 35);
     
     // Resetar cor do texto
-    doc.setTextColor(...textColor);
+    doc.setTextColor(textColor[0], textColor[1], textColor[2]);
     
     // Calcular estatísticas
-    const totalCompras = purchases.length;
-    const totalPago = purchases.filter(p => p.status === 'pago');
-    const totalPendente = purchases.filter(p => p.status === 'pendente');
-    const totalCancelado = purchases.filter(p => p.status === 'cancelado');
+    const totalCompras = filteredPurchases.length;
+    const totalPago = filteredPurchases.filter(p => p.status === 'pago');
+    const totalPendente = filteredPurchases.filter(p => p.status === 'pendente');
+    const totalCancelado = filteredPurchases.filter(p => p.status === 'cancelado');
     
     const totalVendido = totalPago.reduce((sum, p) => sum + Number(p.valor_total), 0);
-    const totalPix = purchases
+    const totalPix = filteredPurchases
       .filter(p => p.status === 'pago' && p.metodo_pagamento === 'pix')
       .reduce((sum, p) => sum + Number(p.valor_total), 0);
-    const totalCartao = purchases
+    const totalCartao = filteredPurchases
       .filter(p => p.status === 'pago' && p.metodo_pagamento === 'cartao')
       .reduce((sum, p) => sum + Number(p.valor_total), 0);
 
     // Seção de estatísticas com fundo colorido
     const statsY = 50;
-    doc.setFillColor(...lightGray);
+    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
     doc.rect(10, statsY, 190, 50, 'F');
     
     // Título da seção
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...primaryColor);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.text('📊 Resumo Executivo', 20, statsY + 15);
     
     // Estatísticas
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...textColor);
+    doc.setTextColor(textColor[0], textColor[1], textColor[2]);
     
     const stats = [
       `Total de Compras: ${totalCompras}`,
@@ -255,7 +262,7 @@ const PurchasesList: React.FC = () => {
     });
 
     // Tabela de transações moderna
-    const tableData = purchases.map(p => [
+    const tableData = filteredPurchases.map(p => [
       p.nome,
       p.email,
       p.numeros_comprados.slice(0, 3).join(', ') + (p.numeros_comprados.length > 3 ? '...' : ''),
@@ -417,7 +424,7 @@ const PurchasesList: React.FC = () => {
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border">
           <div className="text-2xl font-bold text-green-600">
-            R$ {totalPix.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            R$ {totalPix.toLocaleString('pt-BR', { minimumFraction Digits: 2 })}
           </div>
           <div className="text-sm text-gray-600">Total Pix</div>
         </div>
