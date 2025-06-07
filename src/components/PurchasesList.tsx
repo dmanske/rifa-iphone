@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, Clock, X, Download, Eye, EyeOff, Receipt, Search, FileText } from 'lucide-react';
+import { CheckCircle, Clock, X, Download, Eye, EyeOff, Receipt, Search, FileText, ExternalLink } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -111,114 +112,214 @@ const PurchasesList: React.FC = () => {
 
   const handleViewProof = (purchase: Purchase) => {
     console.log('Visualizando comprovante para:', purchase);
-    console.log('Dados do comprovante:', purchase.dados_comprovante);
-    console.log('QR Code Base64:', purchase.qr_code_base64);
-    console.log('Comprovante URL:', purchase.comprovante_url);
     setSelectedTransaction(purchase);
     setShowProofModal(true);
   };
 
+  const handleViewOriginalProof = (purchase: Purchase) => {
+    if (purchase.mercadopago_payment_id) {
+      const originalProofUrl = `https://www.mercadopago.com.br/activities/payment?id=${purchase.mercadopago_payment_id}`;
+      window.open(originalProofUrl, '_blank');
+      
+      toast({
+        title: "Comprovante Original",
+        description: "Abrindo comprovante oficial do MercadoPago.",
+      });
+    } else {
+      toast({
+        title: "Comprovante não disponível",
+        description: "ID do pagamento MercadoPago não encontrado.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleSearch = (term: string) => {
     setSearchTerm(term);
+    
     if (!term.trim()) {
       setFilteredPurchases(purchases);
       return;
     }
 
-    const filtered = purchases.filter(purchase => 
-      purchase.nome.toLowerCase().includes(term.toLowerCase()) ||
-      purchase.email.toLowerCase().includes(term.toLowerCase()) ||
-      purchase.telefone?.toLowerCase().includes(term.toLowerCase()) ||
-      purchase.numeros_comprados.some(num => num.toString().includes(term)) ||
-      purchase.status.toLowerCase().includes(term.toLowerCase()) ||
-      purchase.metodo_pagamento.toLowerCase().includes(term.toLowerCase())
-    );
+    const searchLower = term.toLowerCase().trim();
+    
+    const filtered = purchases.filter(purchase => {
+      // Busca no nome
+      if (purchase.nome.toLowerCase().includes(searchLower)) return true;
+      
+      // Busca no email
+      if (purchase.email.toLowerCase().includes(searchLower)) return true;
+      
+      // Busca no telefone
+      if (purchase.telefone && purchase.telefone.toLowerCase().includes(searchLower)) return true;
+      
+      // Busca nos números comprados
+      if (purchase.numeros_comprados.some(num => 
+        num.toString().includes(term) || 
+        num.toString().padStart(3, '0').includes(term)
+      )) return true;
+      
+      // Busca no status
+      if (purchase.status.toLowerCase().includes(searchLower)) return true;
+      
+      // Busca no método de pagamento
+      if (purchase.metodo_pagamento.toLowerCase().includes(searchLower)) return true;
+      
+      // Busca no valor
+      if (purchase.valor_total.toString().includes(term)) return true;
+      
+      // Busca no ID da transação
+      if (purchase.id.toLowerCase().includes(searchLower)) return true;
+      
+      // Busca no ID do MercadoPago
+      if (purchase.mercadopago_payment_id && purchase.mercadopago_payment_id.includes(term)) return true;
+      
+      return false;
+    });
     
     setFilteredPurchases(filtered);
   };
 
-  const generatePDFReport = () => {
+  const generateModernPDFReport = () => {
     const doc = new jsPDF();
     
-    // Título
-    doc.setFontSize(18);
-    doc.text('Relatório Completo de Vendas', 14, 22);
+    // Configurar cores
+    const primaryColor = [59, 130, 246]; // blue-600
+    const secondaryColor = [34, 197, 94]; // green-500
+    const textColor = [31, 41, 55]; // gray-800
+    const lightGray = [249, 250, 251]; // gray-50
     
-    // Data de geração
+    // Cabeçalho com cores
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, 210, 40, 'F');
+    
+    // Título em branco
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Relatório Completo de Vendas', 20, 25);
+    
+    // Data em branco menor
     doc.setFontSize(12);
-    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 32);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 20, 35);
     
-    // Estatísticas
-    const totalVendido = purchases
-      .filter(p => p.status === 'pago')
-      .reduce((sum, p) => sum + Number(p.valor_total), 0);
+    // Resetar cor do texto
+    doc.setTextColor(...textColor);
     
+    // Calcular estatísticas
+    const totalCompras = purchases.length;
+    const totalPago = purchases.filter(p => p.status === 'pago');
+    const totalPendente = purchases.filter(p => p.status === 'pendente');
+    const totalCancelado = purchases.filter(p => p.status === 'cancelado');
+    
+    const totalVendido = totalPago.reduce((sum, p) => sum + Number(p.valor_total), 0);
     const totalPix = purchases
       .filter(p => p.status === 'pago' && p.metodo_pagamento === 'pix')
       .reduce((sum, p) => sum + Number(p.valor_total), 0);
-    
     const totalCartao = purchases
       .filter(p => p.status === 'pago' && p.metodo_pagamento === 'cartao')
       .reduce((sum, p) => sum + Number(p.valor_total), 0);
 
-    doc.setFontSize(14);
-    doc.text('Resumo Executivo:', 14, 45);
+    // Seção de estatísticas com fundo colorido
+    const statsY = 50;
+    doc.setFillColor(...lightGray);
+    doc.rect(10, statsY, 190, 50, 'F');
+    
+    // Título da seção
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryColor);
+    doc.text('📊 Resumo Executivo', 20, statsY + 15);
+    
+    // Estatísticas
     doc.setFontSize(11);
-    doc.text(`Total de Compras: ${purchases.length}`, 14, 55);
-    doc.text(`Total Arrecadado: R$ ${totalVendido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 14, 65);
-    doc.text(`Total Pix: R$ ${totalPix.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 14, 75);
-    doc.text(`Total Cartão: R$ ${totalCartao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 14, 85);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...textColor);
+    
+    const stats = [
+      `Total de Compras: ${totalCompras}`,
+      `Pagamentos Confirmados: ${totalPago.length}`,
+      `Pendentes: ${totalPendente.length}`,
+      `Cancelados: ${totalCancelado.length}`,
+      `💰 Total Arrecadado: R$ ${totalVendido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      `💳 PIX: R$ ${totalPix.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      `🏦 Cartão: R$ ${totalCartao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+    ];
+    
+    stats.forEach((stat, index) => {
+      const x = index < 4 ? 20 : 110;
+      const y = statsY + 25 + ((index % 4) * 7);
+      doc.text(stat, x, y);
+    });
 
-    // Tabela de transações
+    // Tabela de transações moderna
     const tableData = purchases.map(p => [
       p.nome,
       p.email,
-      p.numeros_comprados.join(', '),
+      p.numeros_comprados.slice(0, 3).join(', ') + (p.numeros_comprados.length > 3 ? '...' : ''),
       `R$ ${Number(p.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      p.metodo_pagamento === 'pix' ? 'Pix' : 'Cartão',
-      p.status,
+      p.metodo_pagamento === 'pix' ? 'PIX' : 'Cartão',
+      p.status.toUpperCase(),
       new Date(p.data_transacao).toLocaleDateString('pt-BR')
     ]);
 
     (doc as any).autoTable({
       head: [['Nome', 'Email', 'Números', 'Valor', 'Método', 'Status', 'Data']],
       body: tableData,
-      startY: 95,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
+      startY: 110,
+      styles: { 
+        fontSize: 9,
+        cellPadding: 3,
+        textColor: textColor
+      },
+      headStyles: { 
+        fillColor: primaryColor,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: lightGray
+      },
+      didParseCell: function(data: any) {
+        // Colorir status
+        if (data.column.index === 5) { // coluna status
+          if (data.cell.text[0] === 'PAGO') {
+            data.cell.styles.textColor = secondaryColor;
+            data.cell.styles.fontStyle = 'bold';
+          } else if (data.cell.text[0] === 'PENDENTE') {
+            data.cell.styles.textColor = [234, 179, 8]; // yellow-500
+            data.cell.styles.fontStyle = 'bold';
+          } else if (data.cell.text[0] === 'CANCELADO') {
+            data.cell.styles.textColor = [239, 68, 68]; // red-500
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      }
     });
 
-    doc.save(`relatorio_rifa_${new Date().toISOString().split('T')[0]}.pdf`);
+    // Rodapé
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text(`Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
+      doc.text('Gerado automaticamente pelo Sistema de Rifas', 105, 295, { align: 'center' });
+    }
+
+    doc.save(`relatorio_vendas_${new Date().toISOString().split('T')[0]}.pdf`);
     
     toast({
-      title: "PDF Gerado",
-      description: "Relatório completo foi baixado com sucesso.",
+      title: "PDF Gerado com Sucesso! 🎉",
+      description: "Relatório moderno e colorido foi baixado.",
     });
-  };
-
-  const exportToCSV = () => {
-    const csvContent = [
-      "Nome,Email,Telefone,Números,Valor Total,Método,Status,Data,Comprovante URL,MP Payment ID",
-      ...filteredPurchases.map(p => 
-        `"${p.nome}","${p.email}","${p.telefone || ''}","${p.numeros_comprados.join(', ')}","${p.valor_total}","${p.metodo_pagamento}","${p.status}","${new Date(p.data_transacao).toLocaleString('pt-BR')}","${p.comprovante_url || ''}","${p.mercadopago_payment_id || ''}"`
-      )
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `compras_rifa_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   useEffect(() => {
     fetchPurchases();
 
-    // Configurar realtime updates
     const channel = supabase
       .channel('transactions_changes')
       .on(
@@ -272,16 +373,11 @@ const PurchasesList: React.FC = () => {
   const hasPixProof = (purchase: Purchase) => {
     const isPixPayment = purchase.metodo_pagamento === 'pix';
     const isPaid = purchase.status === 'pago';
-    
-    console.log(`Verificando comprovante para ${purchase.id}:`, {
-      status: purchase.status,
-      metodo: purchase.metodo_pagamento,
-      isPaid,
-      isPixPayment,
-      mercadopago_payment_id: purchase.mercadopago_payment_id
-    });
-    
     return isPixPayment && isPaid;
+  };
+
+  const hasOriginalProof = (purchase: Purchase) => {
+    return purchase.mercadopago_payment_id && purchase.status === 'pago';
   };
 
   const totalVendido = filteredPurchases
@@ -340,7 +436,7 @@ const PurchasesList: React.FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
               type="text"
-              placeholder="Buscar por nome, email, telefone, números..."
+              placeholder="Buscar por nome, email, telefone, números, status..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -358,19 +454,11 @@ const PurchasesList: React.FC = () => {
           </button>
           
           <button
-            onClick={generatePDFReport}
+            onClick={generateModernPDFReport}
             className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
           >
             <FileText className="w-4 h-4" />
-            <span>PDF Completo</span>
-          </button>
-          
-          <button
-            onClick={exportToCSV}
-            className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
-          >
-            <Download className="w-4 h-4" />
-            <span>Exportar CSV</span>
+            <span>PDF Moderno</span>
           </button>
         </div>
       </div>
@@ -394,7 +482,7 @@ const PurchasesList: React.FC = () => {
                 <TableHead>Método</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data</TableHead>
-                <TableHead>Comprovante</TableHead>
+                <TableHead>Comprovantes</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -463,19 +551,29 @@ const PurchasesList: React.FC = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {hasPixProof(purchase) ? (
-                      <button
-                        onClick={() => handleViewProof(purchase)}
-                        className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs transition-colors"
-                      >
-                        <Receipt className="w-3 h-3" />
-                        <span>Ver</span>
-                      </button>
-                    ) : (
-                      <span className="text-xs text-gray-400">
-                        {purchase.status === 'pago' && purchase.metodo_pagamento === 'pix' ? 'Processando...' : 'N/A'}
-                      </span>
-                    )}
+                    <div className="flex gap-1">
+                      {hasPixProof(purchase) && (
+                        <button
+                          onClick={() => handleViewProof(purchase)}
+                          className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs transition-colors"
+                        >
+                          <Receipt className="w-3 h-3" />
+                          <span>PIX</span>
+                        </button>
+                      )}
+                      {hasOriginalProof(purchase) && (
+                        <button
+                          onClick={() => handleViewOriginalProof(purchase)}
+                          className="flex items-center space-x-1 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs transition-colors"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Original</span>
+                        </button>
+                      )}
+                      {!hasPixProof(purchase) && !hasOriginalProof(purchase) && (
+                        <span className="text-xs text-gray-400">N/A</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {purchase.status === 'pendente' && (
@@ -513,7 +611,6 @@ const PurchasesList: React.FC = () => {
         <PixProofModal
           isOpen={showProofModal}
           onClose={() => {
-            console.log('Fechando modal de comprovante');
             setShowProofModal(false);
             setSelectedTransaction(null);
           }}
