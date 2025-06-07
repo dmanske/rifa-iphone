@@ -27,11 +27,11 @@ export const generateModernPDFReport = (filteredPurchases: Purchase[]) => {
     
     const doc = new jsPDF();
     
-    // Configurar cores melhoradas para legibilidade
-    const primaryColor = [59, 130, 246]; // blue-600
-    const secondaryColor = [34, 197, 94]; // green-500
-    const textColor = [31, 41, 55]; // gray-800
-    const lightGray = [248, 250, 252]; // gray-100
+    // Configurar cores melhoradas para legibilidade - definidas como tuples
+    const primaryColor: [number, number, number] = [59, 130, 246]; // blue-600
+    const secondaryColor: [number, number, number] = [34, 197, 94]; // green-500
+    const textColor: [number, number, number] = [31, 41, 55]; // gray-800
+    const lightGray: [number, number, number] = [248, 250, 252]; // gray-100
     
     // Cabeçalho melhorado
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -121,12 +121,12 @@ export const generateModernPDFReport = (filteredPurchases: Purchase[]) => {
         fontSize: 12, // Fonte maior
         cellPadding: 5, // Mais espaçamento
         textColor: textColor,
-        lineColor: [200, 200, 200],
+        lineColor: [200, 200, 200] as [number, number, number],
         lineWidth: 0.2
       },
       headStyles: { 
         fillColor: primaryColor,
-        textColor: [255, 255, 255],
+        textColor: [255, 255, 255] as [number, number, number],
         fontStyle: 'bold',
         fontSize: 13
       },
@@ -146,13 +146,13 @@ export const generateModernPDFReport = (filteredPurchases: Purchase[]) => {
         // Colorir status com cores mais vibrantes
         if (data.column.index === 5) { // coluna status
           if (data.cell.text[0] === 'PAGO') {
-            data.cell.styles.textColor = [22, 163, 74]; // green-600
+            data.cell.styles.textColor = [22, 163, 74] as [number, number, number]; // green-600
             data.cell.styles.fontStyle = 'bold';
           } else if (data.cell.text[0] === 'PENDENTE') {
-            data.cell.styles.textColor = [217, 119, 6]; // yellow-600
+            data.cell.styles.textColor = [217, 119, 6] as [number, number, number]; // yellow-600
             data.cell.styles.fontStyle = 'bold';
           } else if (data.cell.text[0] === 'CANCELADO') {
-            data.cell.styles.textColor = [220, 38, 38]; // red-600
+            data.cell.styles.textColor = [220, 38, 38] as [number, number, number]; // red-600
             data.cell.styles.fontStyle = 'bold';
           }
         }
