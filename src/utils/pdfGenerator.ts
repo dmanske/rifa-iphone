@@ -1,6 +1,6 @@
 
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 interface Purchase {
   id: string;
@@ -110,7 +110,8 @@ export const generateModernPDFReport = (filteredPurchases: Purchase[]) => {
 
     console.log('Dados da tabela preparados:', tableData.length, 'linhas');
 
-    (doc as any).autoTable({
+    // Usar autoTable corretamente
+    autoTable(doc, {
       head: [['Nome', 'Email', 'Números', 'Valor', 'Método', 'Status', 'Data']],
       body: tableData,
       startY: 110,
