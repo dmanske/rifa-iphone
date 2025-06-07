@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -105,6 +104,10 @@ const PurchasesList: React.FC = () => {
   };
 
   const handleViewProof = (purchase: Purchase) => {
+    console.log('Visualizando comprovante para:', purchase);
+    console.log('Dados do comprovante:', purchase.dados_comprovante);
+    console.log('QR Code Base64:', purchase.qr_code_base64);
+    console.log('Comprovante URL:', purchase.comprovante_url);
     setSelectedTransaction(purchase);
     setShowProofModal(true);
   };
@@ -179,9 +182,24 @@ const PurchasesList: React.FC = () => {
   };
 
   const hasPixProof = (purchase: Purchase) => {
-    return purchase.status === 'pago' && 
-           purchase.metodo_pagamento === 'pix' && 
-           (purchase.comprovante_url || purchase.qr_code_base64);
+    const hasProofData = purchase.status === 'pago' && 
+                        purchase.metodo_pagamento === 'pix' && 
+                        (purchase.comprovante_url || 
+                         purchase.qr_code_base64 || 
+                         purchase.dados_comprovante ||
+                         purchase.mercadopago_payment_id);
+    
+    console.log(`Verificando comprovante para ${purchase.id}:`, {
+      status: purchase.status,
+      metodo: purchase.metodo_pagamento,
+      comprovante_url: purchase.comprovante_url,
+      qr_code_base64: !!purchase.qr_code_base64,
+      dados_comprovante: !!purchase.dados_comprovante,
+      mercadopago_payment_id: purchase.mercadopago_payment_id,
+      hasProofData
+    });
+    
+    return hasProofData;
   };
 
   const totalVendido = purchases
@@ -347,7 +365,9 @@ const PurchasesList: React.FC = () => {
                         <span>Ver</span>
                       </button>
                     ) : (
-                      <span className="text-xs text-gray-400">N/A</span>
+                      <span className="text-xs text-gray-400">
+                        {purchase.status === 'pago' && purchase.metodo_pagamento === 'pix' ? 'Sem dados' : 'N/A'}
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -386,6 +406,7 @@ const PurchasesList: React.FC = () => {
         <PixProofModal
           isOpen={showProofModal}
           onClose={() => {
+            console.log('Fechando modal de comprovante');
             setShowProofModal(false);
             setSelectedTransaction(null);
           }}

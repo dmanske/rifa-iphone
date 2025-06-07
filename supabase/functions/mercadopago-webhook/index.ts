@@ -95,7 +95,7 @@ serve(async (req) => {
                 e2e_id: paymentData.point_of_interaction?.transaction_data?.e2e_id || null,
               };
 
-              console.log("📄 Dados do comprovante PIX:", comprovanteData);
+              console.log("📄 Dados do comprovante PIX extraídos:", comprovanteData);
 
               // Atualizar números para vendido
               const { error: updateNumbersError } = await supabase
@@ -113,44 +113,51 @@ serve(async (req) => {
 
               if (updateNumbersError) {
                 console.error("❌ Erro ao atualizar números:", updateNumbersError);
+              } else {
+                console.log("✅ Números atualizados para vendido");
               }
 
               // Atualizar transação com dados do comprovante PIX
+              const updateData = {
+                status: 'pago',
+                data_pagamento: new Date().toISOString(),
+                data_aprovacao_pix: paymentData.date_approved,
+                confirmacao_enviada: true,
+                data_confirmacao: new Date().toISOString(),
+                mercadopago_payment_id: paymentId.toString(),
+                comprovante_url: comprovanteData.ticket_url,
+                qr_code_pix: comprovanteData.qr_code,
+                qr_code_base64: comprovanteData.qr_code_base64,
+                dados_comprovante: {
+                  ...comprovanteData,
+                  payment_data: {
+                    id: paymentData.id,
+                    status: paymentData.status,
+                    status_detail: paymentData.status_detail,
+                    transaction_amount: paymentData.transaction_amount,
+                    currency_id: paymentData.currency_id,
+                    date_approved: paymentData.date_approved,
+                    date_created: paymentData.date_created,
+                    description: paymentData.description,
+                    external_reference: paymentData.external_reference,
+                    fee_details: paymentData.fee_details,
+                    money_release_date: paymentData.money_release_date,
+                    payer: paymentData.payer,
+                    payment_method: paymentData.payment_method,
+                  }
+                }
+              };
+
+              console.log("🔄 Dados para atualização da transação:", JSON.stringify(updateData, null, 2));
+
               const { error: updateTransactionError } = await supabase
                 .from('transactions')
-                .update({
-                  status: 'pago',
-                  data_pagamento: new Date().toISOString(),
-                  data_aprovacao_pix: paymentData.date_approved,
-                  confirmacao_enviada: true,
-                  data_confirmacao: new Date().toISOString(),
-                  mercadopago_payment_id: paymentId.toString(),
-                  comprovante_url: comprovanteData.ticket_url,
-                  qr_code_pix: comprovanteData.qr_code,
-                  qr_code_base64: comprovanteData.qr_code_base64,
-                  dados_comprovante: {
-                    ...comprovanteData,
-                    payment_data: {
-                      id: paymentData.id,
-                      status: paymentData.status,
-                      status_detail: paymentData.status_detail,
-                      transaction_amount: paymentData.transaction_amount,
-                      currency_id: paymentData.currency_id,
-                      date_approved: paymentData.date_approved,
-                      date_created: paymentData.date_created,
-                      description: paymentData.description,
-                      external_reference: paymentData.external_reference,
-                      fee_details: paymentData.fee_details,
-                      money_release_date: paymentData.money_release_date,
-                      payer: paymentData.payer,
-                      payment_method: paymentData.payment_method,
-                    }
-                  }
-                })
+                .update(updateData)
                 .eq('id', transaction.id);
 
               if (updateTransactionError) {
                 console.error("❌ Erro ao atualizar transação:", updateTransactionError);
+                console.error("❌ Detalhes do erro:", JSON.stringify(updateTransactionError, null, 2));
               } else {
                 console.log("✅ Transação atualizada com dados do comprovante PIX!");
               }
