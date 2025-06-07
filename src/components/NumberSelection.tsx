@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../hooks/useAuth';
 import Cart from './Cart';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '../hooks/use-mobile';
 
 interface NumberSelectionProps {
   onBack: () => void;
@@ -14,6 +15,7 @@ interface NumberSelectionProps {
 const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequired }) => {
   const { cartItems, addToCart, removeFromCart } = useCart();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [showCart, setShowCart] = useState(false);
   const [soldNumbers, setSoldNumbers] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,16 +139,19 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
   };
 
   const getNumberButtonClass = (number: number) => {
+    const baseClasses = 'rounded-xl font-bold transition-all duration-200 border-2 flex items-center justify-center text-center';
+    const sizeClasses = isMobile ? 'h-12 text-sm' : 'h-16 text-base';
+    
     if (isNumberSold(number)) {
-      return 'bg-red-100 text-red-400 cursor-not-allowed border-red-200';
+      return `${baseClasses} ${sizeClasses} bg-red-100 text-red-500 cursor-not-allowed border-red-200 opacity-60`;
     }
     if (isNumberInCart(number)) {
-      return 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105';
+      return `${baseClasses} ${sizeClasses} bg-blue-600 text-white border-blue-600 shadow-lg scale-105`;
     }
-    return 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:scale-105 cursor-pointer';
+    return `${baseClasses} ${sizeClasses} bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50 active:scale-95 cursor-pointer shadow-sm`;
   };
 
-  // Organizar números em linhas de 10 para layout responsivo
+  // Organizar números em linhas de 10
   const organizeNumbersInRows = () => {
     const rows = [];
     for (let i = 1; i <= 130; i += 10) {
@@ -175,42 +180,41 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+      <div className="bg-white shadow-sm border-b sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <button
                 onClick={onBack}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <ArrowLeft className="w-6 h-6 text-gray-600" />
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Escolha seus números</h1>
-                <p className="text-sm sm:text-base text-gray-600">R$ 100,00 por número • Máximo 10 números por pessoa</p>
+                <h1 className="text-lg font-bold text-gray-900">Escolha seus números</h1>
+                <p className="text-xs text-gray-600">R$ 100,00 por número • Máx. 10 números</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-2 sm:space-x-4">
+            <div className="flex items-center space-x-2">
               {!user && (
                 <button
                   onClick={onAuthRequired}
-                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm"
+                  className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors text-sm"
                 >
                   <LogIn className="w-4 h-4" />
-                  <span className="hidden sm:inline">Fazer Login</span>
-                  <span className="sm:hidden">Login</span>
+                  <span>Login</span>
                 </button>
               )}
               
               <button
                 onClick={handleCartClick}
-                className="relative bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 shadow-lg flex items-center space-x-2"
+                className="relative bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold transition-all duration-200 flex items-center space-x-2"
               >
-                <ShoppingCart className="w-5 h-5" />
-                <span className="hidden sm:inline">Carrinho</span>
+                <ShoppingCart className="w-4 h-4" />
+                <span className="text-sm">Carrinho</span>
                 {cartItems.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
                     {cartItems.length}
                   </span>
                 )}
@@ -222,20 +226,20 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
 
       {/* Alerta de Login */}
       {!user && (
-        <div className="bg-blue-50 border border-blue-200 mx-4 sm:mx-6 mt-6 rounded-xl p-4">
+        <div className="bg-blue-50 border border-blue-200 mx-4 mt-4 rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <LogIn className="w-5 h-5 text-blue-600" />
               <div>
-                <p className="text-blue-800 font-medium">Login necessário</p>
-                <p className="text-blue-700 text-sm">
-                  Faça login ou crie uma conta para escolher seus números da sorte
+                <p className="text-blue-800 font-medium text-sm">Login necessário</p>
+                <p className="text-blue-700 text-xs">
+                  Faça login para escolher seus números
                 </p>
               </div>
             </div>
             <button
               onClick={onAuthRequired}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-medium transition-colors text-sm"
             >
               Entrar
             </button>
@@ -243,49 +247,47 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
         </div>
       )}
 
-      {/* Numbers Grid - Layout em linhas responsivo */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <div className="mb-8">
-          <div className="flex flex-wrap gap-4 text-sm">
+      {/* Numbers Grid Mobile Optimized */}
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Legend */}
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-4 text-xs">
             <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-white border-2 border-gray-200 rounded"></div>
+              <div className="w-3 h-3 bg-white border-2 border-gray-200 rounded"></div>
               <span className="text-gray-600">Disponível</span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-blue-600 rounded"></div>
+              <div className="w-3 h-3 bg-blue-600 rounded"></div>
               <span className="text-gray-600">Selecionado</span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-red-100 border-2 border-red-200 rounded"></div>
+              <div className="w-3 h-3 bg-red-100 border-2 border-red-200 rounded"></div>
               <span className="text-gray-600">Vendido</span>
             </div>
           </div>
         </div>
 
-        {/* Grid otimizado para mobile - Layout em linhas */}
-        <div className="space-y-4">
+        {/* Grid com layout otimizado para mobile */}
+        <div className="space-y-6">
           {numberRows.map((row, rowIndex) => (
-            <div key={rowIndex} className="bg-white rounded-xl shadow-sm border p-4">
-              {/* Header da linha mostrando a faixa */}
-              <div className="mb-3 text-center">
-                <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
+            <div key={rowIndex} className="bg-white rounded-2xl shadow-sm border p-4">
+              {/* Header da linha - range dos números */}
+              <div className="mb-4 text-center">
+                <span className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
                   {row[0].toString().padStart(3, '0')} - {row[row.length - 1].toString().padStart(3, '0')}
                 </span>
               </div>
               
-              {/* Números da linha */}
-              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+              {/* Grid responsivo dos números */}
+              <div className={`grid gap-2 ${isMobile ? 'grid-cols-5' : 'grid-cols-10'}`}>
                 {row.map((number) => (
                   <button
                     key={number}
                     onClick={() => handleNumberClick(number)}
-                    disabled={isNumberSold(number)}
+                    disabled={isNumberSold(number) || !user}
                     className={`
-                      aspect-square rounded-lg border-2 font-bold text-sm transition-all duration-200
                       ${getNumberButtonClass(number)}
-                      ${!isNumberSold(number) && user ? 'hover:shadow-md active:scale-95' : ''}
                       ${!user ? 'opacity-50' : ''}
-                      min-h-[3rem] flex items-center justify-center
                     `}
                   >
                     {number.toString().padStart(3, '0')}
@@ -296,40 +298,40 @@ const NumberSelection: React.FC<NumberSelectionProps> = ({ onBack, onAuthRequire
           ))}
         </div>
 
-        {/* Stats */}
-        <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border">
-            <div className="text-xl sm:text-2xl font-bold text-blue-600">{130 - soldNumbers.length}</div>
-            <div className="text-xs sm:text-sm text-gray-600">Números Disponíveis</div>
+        {/* Stats Cards */}
+        <div className="mt-8 grid grid-cols-2 gap-4">
+          <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
+            <div className="text-xl font-bold text-blue-600">{130 - soldNumbers.length}</div>
+            <div className="text-xs text-gray-600">Disponíveis</div>
           </div>
-          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border">
-            <div className="text-xl sm:text-2xl font-bold text-red-600">{soldNumbers.length}</div>
-            <div className="text-xs sm:text-sm text-gray-600">Números Vendidos</div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
+            <div className="text-xl font-bold text-red-600">{soldNumbers.length}</div>
+            <div className="text-xs text-gray-600">Vendidos</div>
           </div>
-          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border">
-            <div className="text-xl sm:text-2xl font-bold text-green-600">{cartItems.length}</div>
-            <div className="text-xs sm:text-sm text-gray-600">No Carrinho</div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
+            <div className="text-xl font-bold text-green-600">{cartItems.length}</div>
+            <div className="text-xs text-gray-600">No Carrinho</div>
           </div>
-          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border">
-            <div className="text-xl sm:text-2xl font-bold text-purple-600">
+          <div className="bg-white p-4 rounded-xl shadow-sm border text-center">
+            <div className="text-xl font-bold text-purple-600">
               R$ {(cartItems.length * 100).toLocaleString('pt-BR')}
             </div>
-            <div className="text-xs sm:text-sm text-gray-600">Total Selecionado</div>
+            <div className="text-xs text-gray-600">Total</div>
           </div>
         </div>
       </div>
 
       {/* Cart Modal */}
       {showCart && user && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold text-gray-900">Meu Carrinho</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl sm:max-h-[90vh] max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
+              <h2 className="text-lg font-bold text-gray-900">Meu Carrinho</h2>
               <button
                 onClick={() => setShowCart(false)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <X className="w-6 h-6 text-gray-600" />
+                <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
             <Cart onClose={() => setShowCart(false)} />
