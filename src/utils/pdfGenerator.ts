@@ -1,13 +1,6 @@
 
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
-// Extend jsPDF type to include autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
+import autoTable from 'jspdf-autotable';
 
 interface Purchase {
   id: string;
@@ -120,7 +113,7 @@ export const generateModernPDFReport = (filteredPurchases: Purchase[]) => {
     console.log('Dados da tabela preparados:', tableData.length, 'linhas');
 
     // Tabela com design melhorado e mais legível
-    doc.autoTable({
+    autoTable(doc, {
       head: [['Nome', 'Email', 'Números', 'Valor', 'Método', 'Status', 'Data']],
       body: tableData,
       startY: 155,
