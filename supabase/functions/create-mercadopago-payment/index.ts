@@ -119,14 +119,16 @@ serve(async (req) => {
     const userInfo = await testResponse.json();
     console.log("✅ API MercadoPago OK, User ID:", userInfo.id);
 
-    // 5. Calcular valores
+    // 5. Calcular valores - VALOR DE TESTE R$ 1,00
     const quantidade = numeros.length;
-    const precoBase = 100; // R$ 100,00
+    const precoBase = 1; // ALTERADO PARA R$ 1,00 PARA TESTES
     let precoFinal = precoBase * quantidade;
     
     if (metodo_pagamento === 'cartao') {
       precoFinal = Math.round(precoFinal * 1.05);
     }
+
+    console.log(`💰 Valor calculado: ${quantidade} números x R$ ${precoBase} = R$ ${precoFinal}`);
 
     // 6. URLs de retorno - UNIFICADAS COM STRIPE
     const origin = req.headers.get("origin") || "https://rifaiphonecursor.vercel.app";
@@ -184,8 +186,8 @@ serve(async (req) => {
     const preference = {
       items: [
         {
-          title: `Rifa iPhone - ${quantidade} número${quantidade > 1 ? 's' : ''}`,
-          description: `Números: ${numeros.join(', ')}`,
+          title: `Rifa iPhone - ${quantidade} número${quantidade > 1 ? 's' : ''} (TESTE)`,
+          description: `Números: ${numeros.join(', ')} - VALOR DE TESTE`,
           quantity: 1,
           currency_id: "BRL",
           unit_price: precoFinal

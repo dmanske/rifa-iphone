@@ -68,13 +68,16 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await fetchNumbers();
   }, [fetchNumbers]);
 
-  // Load inicial
+  // Load inicial - AGORA CARREGA INDEPENDENTE DO LOGIN
   useEffect(() => {
+    console.log('🚀 Carregando números iniciais...');
     fetchNumbers();
-  }, [fetchNumbers]);
+  }, []); // Removido dependência do user - carrega sempre
 
   // Realtime subscription para atualizar números em tempo real
   useEffect(() => {
+    console.log('👂 Configurando realtime subscription...');
+    
     const channel = supabase
       .channel('raffle_numbers_changes')
       .on(
@@ -105,6 +108,7 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
       .subscribe();
 
     return () => {
+      console.log('🔌 Desconectando realtime subscription...');
       supabase.removeChannel(channel);
     };
   }, [fetchNumbers]);

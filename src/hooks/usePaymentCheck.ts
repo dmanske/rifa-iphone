@@ -55,20 +55,17 @@ export const usePaymentCheck = ({ transactionId, onPaymentConfirmed, onStartProc
   };
 
   const startChecking = () => {
-    console.log('🚀 Iniciando verificação de pagamento');
+    console.log('🚀 Iniciando verificação de pagamento - MODO ACELERADO');
     
-    // Primeira verificação após 3 segundos (mais rápido)
-    const initialCheckTimeout = setTimeout(() => {
+    // Primeira verificação imediata
+    checkPaymentStatus();
+    
+    // Configurar intervalo MAIS RÁPIDO para testes
+    checkIntervalRef.current = setInterval(() => {
       checkPaymentStatus();
-      
-      // Configurar intervalo mais frequente
-      checkIntervalRef.current = setInterval(() => {
-        checkPaymentStatus();
-      }, 3000); // Verificar a cada 3 segundos
-    }, 3000);
+    }, 2000); // Verificar a cada 2 segundos (mais rápido)
 
     return () => {
-      clearTimeout(initialCheckTimeout);
       if (checkIntervalRef.current) {
         clearInterval(checkIntervalRef.current);
         checkIntervalRef.current = null;

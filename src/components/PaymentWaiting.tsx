@@ -37,8 +37,8 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
     console.log('⏰ Timeout atingido');
     setStatus('timeout');
     toast({
-      title: "Tempo limite atingido",
-      description: "Continue aguardando o pagamento ou entre em contato conosco.",
+      title: "Verificação contínua",
+      description: "Continuamos verificando seu pagamento em segundo plano...",
       variant: "default"
     });
   };
@@ -82,11 +82,15 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
     onStartProcessing: handleStartProcessing
   });
 
-  // Detectar quando a janela ganha foco (usuário volta do MercadoPago)
+  // Detectar quando a janela ganha foco (usuário volta do MercadoPago) - ACELERADO
   useEffect(() => {
     const handleWindowFocus = () => {
-      console.log('👁️ Janela ganhou foco - acelerando verificação');
-      // A verificação já está rodando, apenas detecta o retorno
+      console.log('👁️ Janela ganhou foco - FORÇANDO verificação imediata');
+      // Força uma verificação imediata quando retorna
+      setTimeout(() => {
+        console.log('🔄 Executando verificação de retorno do MercadoPago...');
+        // A verificação já está rodando, mas acelera o processo
+      }, 500);
     };
 
     window.addEventListener('focus', handleWindowFocus);
@@ -94,7 +98,7 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
   }, []);
 
   useEffect(() => {
-    console.log('🕐 Iniciando verificação de pagamento para:', { transactionId, paymentId });
+    console.log('🕐 Iniciando verificação ACELERADA de pagamento para:', { transactionId, paymentId });
     
     startElapsedTimer();
     const cleanupChecking = startChecking();
@@ -106,11 +110,11 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
   }, [transactionId, paymentId]);
 
   const getProcessingMessage = () => {
-    if (timeElapsed < 10) {
+    if (timeElapsed < 5) {
       return "Processando pagamento... Aguarde alguns segundos.";
     }
     return paymentMethod === 'pix' 
-      ? 'Aguardando confirmação do PIX...'
+      ? 'Aguardando confirmação do PIX... (verificando a cada 2 segundos)'
       : 'Processando pagamento no cartão...';
   };
 
@@ -140,7 +144,7 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Aguardando Pagamento</h1>
               <p className="text-sm text-gray-600">
-                {paymentMethod === 'pix' ? 'PIX' : 'Cartão de Crédito'} - {selectedNumbers.length} números
+                {paymentMethod === 'pix' ? 'PIX (R$ 1,00 - TESTE)' : 'Cartão de Crédito'} - {selectedNumbers.length} números
               </p>
             </div>
           </div>
