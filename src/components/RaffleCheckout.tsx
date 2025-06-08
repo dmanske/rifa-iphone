@@ -31,6 +31,49 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
     }
   }, [profile]);
 
+  // VALIDAÇÃO CRÍTICA: Verificar se há números vendidos na seleção
+  useEffect(() => {
+    const validateSelectedNumbers = async () => {
+      if (selectedNumbers.length === 0) return;
+      
+      try {
+        console.log('🔍 Validando números selecionados no checkout:', selectedNumbers);
+        
+        const { data: numbersData, error } = await supabase
+          .from('raffle_numbers')
+          .select('numero, status')
+          .in('numero', selectedNumbers);
+
+        if (error) throw error;
+
+        const soldNumbers = numbersData?.filter(n => n.status === 'vendido').map(n => n.numero) || [];
+        
+        if (soldNumbers.length > 0) {
+          console.log('❌ CRÍTICO: Números vendidos detectados no checkout:', soldNumbers);
+          toast({
+            title: "Números indisponíveis detectados",
+            description: `Os números ${soldNumbers.join(', ')} foram vendidos. Voltando para seleção.`,
+            variant: "destructive"
+          });
+          
+          // Voltar para a tela de seleção
+          setTimeout(() => {
+            onBack();
+          }, 2000);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao validar números:', error);
+        toast({
+          title: "Erro de validação",
+          description: "Erro ao verificar disponibilidade dos números",
+          variant: "destructive"
+        });
+      }
+    };
+
+    validateSelectedNumbers();
+  }, [selectedNumbers, toast, onBack]);
+
   const basePrice = selectedNumbers.length * 100;
   const pixTotal = basePrice;
   const cardTotal = Math.round(basePrice * 1.05); // 5% taxa cartão
@@ -85,6 +128,22 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
     setIsProcessing(true);
 
     try {
+      // VALIDAÇÃO FINAL: Verificar disponibilidade antes do pagamento
+      console.log('🔍 Validação final antes do pagamento...');
+      
+      const { data: numbersData, error: numbersError } = await supabase
+        .from('raffle_numbers')
+        .select('numero, status')
+        .in('numero', selectedNumbers);
+
+      if (numbersError) throw numbersError;
+
+      const soldNumbers = numbersData?.filter(n => n.status === 'vendido').map(n => n.numero) || [];
+      
+      if (soldNumbers.length > 0) {
+        throw new Error(`Os números ${soldNumbers.join(', ')} foram vendidos por outro usuário. Por favor, selecione outros números.`);
+      }
+
       // Unificar chamada das funções - usar a mesma lógica para PIX e Cartão
       let functionName: string;
       let providerName: string;
@@ -350,7 +409,7 @@ const RaffleCheckout: React.FC<RaffleCheckoutProps> = ({ onBack, selectedNumbers
             {isProcessing ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Redirecionando para pagamento...</span>
+                <span>Validando e processando...</span>
               </>
             ) : (
               <span>

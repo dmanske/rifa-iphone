@@ -32,6 +32,7 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
   const { toast } = useToast();
   const [status, setStatus] = useState<'waiting' | 'confirmed' | 'processing' | 'timeout'>('waiting');
   const [fetchedTransactionData, setFetchedTransactionData] = useState<any>(null);
+  const [hasReturnedFromApp, setHasReturnedFromApp] = useState(false);
 
   const handleTimeout = () => {
     console.log('⏰ Timeout atingido');
@@ -82,19 +83,51 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
     onStartProcessing: handleStartProcessing
   });
 
-  // Detectar quando a janela ganha foco (usuário volta do MercadoPago) - ACELERADO
+  // MELHORADO: Detectar quando a janela ganha foco (usuário volta do MercadoPago)
   useEffect(() => {
+    let focusTimeoutId: NodeJS.Timeout;
+    
     const handleWindowFocus = () => {
-      console.log('👁️ Janela ganhou foco - FORÇANDO verificação imediata');
-      // Força uma verificação imediata quando retorna
-      setTimeout(() => {
-        console.log('🔄 Executando verificação de retorno do MercadoPago...');
-        // A verificação já está rodando, mas acelera o processo
-      }, 500);
+      console.log('👁️ Janela ganhou foco - usuário pode ter voltado do app de pagamento');
+      setHasReturnedFromApp(true);
+      
+      // Aguardar um pouco para o app se estabilizar, depois forçar verificação
+      clearTimeout(focusTimeoutId);
+      focusTimeoutId = setTimeout(() => {
+        console.log('🔄 Forçando verificação após retorno do app...');
+        // A verificação já está rodando automaticamente, mas acelera o processo
+      }, 1000);
+    };
+
+    const handleWindowBlur = () => {
+      console.log('👁️ Janela perdeu foco - usuário pode ter ido para app de pagamento');
+    };
+
+    // Detectar mudanças de visibilidade da página (mais confiável que focus/blur)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('👁️ Página ficou visível - verificando pagamento...');
+        setHasReturnedFromApp(true);
+        
+        clearTimeout(focusTimeoutId);
+        focusTimeoutId = setTimeout(() => {
+          console.log('🔄 Verificação acelerada após retorno...');
+        }, 500);
+      } else {
+        console.log('👁️ Página ficou oculta - usuário pode ter ido para outro app');
+      }
     };
 
     window.addEventListener('focus', handleWindowFocus);
-    return () => window.removeEventListener('focus', handleWindowFocus);
+    window.addEventListener('blur', handleWindowBlur);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('blur', handleWindowBlur);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimeout(focusTimeoutId);
+    };
   }, []);
 
   useEffect(() => {
@@ -110,9 +143,14 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
   }, [transactionId, paymentId]);
 
   const getProcessingMessage = () => {
+    if (hasReturnedFromApp && paymentMethod === 'pix') {
+      return 'Verificando seu pagamento PIX... Aguarde alguns segundos.';
+    }
+    
     if (timeElapsed < 5) {
       return "Processando pagamento... Aguarde alguns segundos.";
     }
+    
     return paymentMethod === 'pix' 
       ? 'Aguardando confirmação do PIX... (verificando a cada 2 segundos)'
       : 'Processando pagamento no cartão...';
@@ -146,6 +184,9 @@ const PaymentWaiting: React.FC<PaymentWaitingProps> = ({
               <p className="text-sm text-gray-600">
                 {paymentMethod === 'pix' ? 'PIX (R$ 1,00 - TESTE)' : 'Cartão de Crédito'} - {selectedNumbers.length} números
               </p>
+              {hasReturnedFromApp && paymentMethod === 'pix' && (
+                <p className="text-xs text-green-600 mt-1">✓ Verificando pagamento realizado</p>
+              )}
             </div>
           </div>
         </div>

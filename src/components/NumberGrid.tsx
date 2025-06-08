@@ -12,10 +12,18 @@ interface NumberGridProps {
 }
 
 const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
-  const { numbers, loading, selectedNumbers, setSelectedNumbers, clearSelectedNumbers } = useNumbers();
+  const { numbers, loading, selectedNumbers, setSelectedNumbers, clearSelectedNumbers, refreshNumbers } = useNumbers();
   const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  // Garantir atualização dos números quando o usuário faz login
+  useEffect(() => {
+    if (user) {
+      console.log('👤 Usuário logado - forçando refresh dos números');
+      refreshNumbers();
+    }
+  }, [user, refreshNumbers]);
 
   useEffect(() => {
     onNumbersSelected(selectedNumbers);
@@ -31,12 +39,26 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
       return;
     }
 
+    // VALIDAÇÃO DUPLA - Verificar se o número está vendido
     const numberData = numbers.find(n => n.numero === numero);
     
     if (numberData?.status === 'vendido') {
+      console.log('❌ Tentativa de selecionar número vendido:', numero);
       toast({
         title: "Número já vendido",
-        description: "Este número já foi vendido e não está mais disponível",
+        description: `O número ${numero.toString().padStart(3, '0')} já foi vendido e não está mais disponível`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Verificar se está em uma lista de números vendidos (extra segurança)
+    const soldNumbers = numbers.filter(n => n.status === 'vendido').map(n => n.numero);
+    if (soldNumbers.includes(numero)) {
+      console.log('❌ Número está na lista de vendidos:', numero);
+      toast({
+        title: "Número indisponível",
+        description: `O número ${numero.toString().padStart(3, '0')} não está disponível para seleção`,
         variant: "destructive"
       });
       return;
@@ -44,6 +66,7 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
 
     if (selectedNumbers.includes(numero)) {
       setSelectedNumbers(selectedNumbers.filter(n => n !== numero));
+      console.log('➖ Número removido da seleção:', numero);
     } else {
       if (selectedNumbers.length >= 10) {
         toast({
@@ -54,6 +77,7 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
         return;
       }
       setSelectedNumbers([...selectedNumbers, numero]);
+      console.log('➕ Número adicionado à seleção:', numero);
     }
   };
 
@@ -67,16 +91,29 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
       return;
     }
 
+    // Filtrar apenas números realmente disponíveis
     const availableNumbers = [];
     for (let i = 1; i <= 130; i++) {
       const numberData = numbers.find(n => n.numero === i);
-      if (numberData?.status !== 'vendido' && !selectedNumbers.includes(i)) {
+      // Verificação tripla para garantir que o número está disponível
+      if (numberData?.status !== 'vendido' && 
+          !selectedNumbers.includes(i) && 
+          numberData?.status === 'disponivel') {
         availableNumbers.push(i);
       }
     }
 
     const remainingSlots = 10 - selectedNumbers.length;
     const numbersToAdd = Math.min(count, availableNumbers.length, remainingSlots);
+
+    if (numbersToAdd === 0) {
+      toast({
+        title: "Nenhum número disponível",
+        description: "Não há números disponíveis para seleção aleatória",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const newNumbers = [...selectedNumbers];
     for (let i = 0; i < numbersToAdd; i++) {
@@ -107,6 +144,7 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
       return 'selected';
     }
     
+    // Verificação mais rigorosa do status vendido
     if (numberData?.status === 'vendido') {
       return 'sold';
     }
@@ -114,7 +152,7 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
     return 'available';
   };
 
-  // Calculate stats
+  // Calculate stats - garantir que números vendidos sejam contados corretamente
   const soldCount = numbers.filter(n => n.status === 'vendido').length;
   const availableCount = 130 - soldCount;
 
@@ -124,6 +162,7 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
         <div className="text-center bg-white rounded-2xl p-8 shadow-2xl">
           <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600 text-lg font-semibold">Carregando números...</p>
+          <p className="text-gray-500 text-sm mt-2">Verificando disponibilidade</p>
         </div>
       </div>
     );

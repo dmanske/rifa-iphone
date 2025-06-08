@@ -87,25 +87,6 @@ const NumberGridMobile: React.FC<NumberGridMobileProps> = ({
           </div>
         </div>
 
-        {/* Mobile Action Buttons */}
-        <div className="bg-white px-4 pb-4">
-          <div className="flex gap-2">
-            <button
-              onClick={onClearSelection}
-              disabled={!user || selectedNumbers.length === 0}
-              className="flex-1 bg-gray-200 disabled:opacity-50 text-gray-700 py-3 rounded-xl font-semibold text-sm"
-            >
-              Limpar
-            </button>
-            <button
-              disabled={!user || selectedNumbers.length === 0}
-              className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 disabled:opacity-50 text-white py-3 rounded-xl font-semibold text-sm"
-            >
-              Comprar
-            </button>
-          </div>
-        </div>
-
         {/* Mobile Legend */}
         <div className="bg-white px-4 pb-6">
           <NumberGridLegend isMobile={true} />

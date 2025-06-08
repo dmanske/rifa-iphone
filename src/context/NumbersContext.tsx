@@ -41,7 +41,7 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const fetchNumbers = useCallback(async () => {
     try {
-      console.log('📊 Buscando números...');
+      console.log('📊 Buscando números da rifa...');
       const { data, error } = await supabase
         .from('raffle_numbers')
         .select('*')
@@ -49,8 +49,15 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (error) throw error;
       
-      console.log('📊 Números carregados:', data?.length);
+      console.log('📊 Números carregados:', data?.length, 'vendidos:', data?.filter(n => n.status === 'vendido').length);
       setNumbers(data || []);
+      
+      // Log detalhado dos números vendidos para debug
+      const soldNumbers = data?.filter(n => n.status === 'vendido').map(n => n.numero) || [];
+      if (soldNumbers.length > 0) {
+        console.log('🔒 Números vendidos carregados:', soldNumbers);
+      }
+      
     } catch (error) {
       console.error('❌ Erro ao buscar números:', error);
     } finally {
@@ -64,22 +71,23 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const refreshNumbers = useCallback(async () => {
-    console.log('🔄 Atualizando números...');
+    console.log('🔄 Forçando atualização dos números...');
+    setLoading(true);
     await fetchNumbers();
   }, [fetchNumbers]);
 
-  // Load inicial - AGORA CARREGA INDEPENDENTE DO LOGIN
+  // Load inicial - SEMPRE carrega, independente do login
   useEffect(() => {
-    console.log('🚀 Carregando números iniciais...');
+    console.log('🚀 Carregamento inicial dos números...');
     fetchNumbers();
-  }, []); // Removido dependência do user - carrega sempre
+  }, []); // Sem dependências - carrega sempre na primeira renderização
 
   // Realtime subscription para atualizar números em tempo real
   useEffect(() => {
     console.log('👂 Configurando realtime subscription...');
     
     const channel = supabase
-      .channel('raffle_numbers_changes')
+      .channel('raffle_numbers_realtime')
       .on(
         'postgres_changes',
         {
@@ -88,7 +96,7 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
           table: 'raffle_numbers'
         },
         (payload) => {
-          console.log('🔄 Números atualizados em tempo real:', payload);
+          console.log('🔄 Números atualizados em tempo real:', payload.eventType, payload.new || payload.old);
           fetchNumbers();
         }
       )
@@ -101,17 +109,30 @@ export const NumbersProvider: React.FC<{ children: React.ReactNode }> = ({ child
           filter: 'status=eq.pago'
         },
         (payload) => {
-          console.log('💰 Transação confirmada - atualizando números:', payload);
+          console.log('💰 Transação paga confirmada - atualizando números:', payload.new?.id);
           fetchNumbers();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('👂 Status da subscription:', status);
+      });
 
     return () => {
       console.log('🔌 Desconectando realtime subscription...');
       supabase.removeChannel(channel);
     };
   }, [fetchNumbers]);
+
+  // Atualizar quando o usuário faz login/logout
+  useEffect(() => {
+    if (user) {
+      console.log('👤 Usuário logado - verificando números...');
+      // Delay pequeno para garantir que o contexto de auth está estável
+      setTimeout(() => {
+        fetchNumbers();
+      }, 100);
+    }
+  }, [user, fetchNumbers]);
 
   const value: NumbersContextType = {
     numbers,

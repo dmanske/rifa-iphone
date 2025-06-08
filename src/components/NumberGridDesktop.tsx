@@ -83,23 +83,6 @@ const NumberGridDesktop: React.FC<NumberGridDesktopProps> = ({
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 mb-6">
-          <button
-            onClick={onClearSelection}
-            disabled={!user || selectedNumbers.length === 0}
-            className="flex-1 bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105"
-          >
-            Limpar Seleção
-          </button>
-          <button
-            disabled={!user || selectedNumbers.length === 0}
-            className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105"
-          >
-            Comprar Números
-          </button>
-        </div>
-
         {/* Modern Legend */}
         <NumberGridLegend isMobile={false} />
 
