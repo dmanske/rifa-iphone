@@ -1,155 +1,189 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNumbers } from '../context/NumbersContext';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '../hooks/use-mobile';
 import NumberGridMobile from './NumberGridMobile';
 import NumberGridDesktop from './NumberGridDesktop';
-import { User, LogIn } from 'lucide-react';
 
 interface NumberGridProps {
   onNumbersSelected: (numbers: number[]) => void;
 }
 
 const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
-  const { numbers, loading, selectedNumbers, setSelectedNumbers } = useNumbers();
+  const { numbers, loading, selectedNumbers, setSelectedNumbers, clearSelectedNumbers, refreshNumbers } = useNumbers();
   const { user } = useAuth();
-  const [isMobile, setIsMobile] = useState(false);
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
 
+  // Garantir atualização dos números quando o usuário faz login
   useEffect(() => {
-    const checkIsMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
-    checkIsMobile();
-    window.addEventListener('resize', checkIsMobile);
-
-    return () => {
-      window.removeEventListener('resize', checkIsMobile);
-    };
-  }, []);
-
-  const handleNumberClick = useCallback((number: number) => {
-    const isSelected = selectedNumbers.includes(number);
-
-    if (isSelected) {
-      setSelectedNumbers(selectedNumbers.filter((num) => num !== number));
-    } else {
-      setSelectedNumbers([...selectedNumbers, number]);
+    if (user) {
+      console.log('👤 Usuário logado - forçando refresh dos números');
+      refreshNumbers();
     }
-  }, [selectedNumbers, setSelectedNumbers]);
-
-  const handleSelectRandom = useCallback((count: number) => {
-    const availableNumbers = Array.from({ length: 130 }, (_, i) => i + 1)
-      .filter(num => !selectedNumbers.includes(num) && getNumberStatus(num) === 'disponivel');
-    
-    const randomNumbers = [];
-    const shuffled = [...availableNumbers].sort(() => Math.random() - 0.5);
-    
-    for (let i = 0; i < Math.min(count, shuffled.length); i++) {
-      randomNumbers.push(shuffled[i]);
-    }
-    
-    setSelectedNumbers([...selectedNumbers, ...randomNumbers]);
-  }, [selectedNumbers, setSelectedNumbers]);
-
-  const handleClearSelection = useCallback(() => {
-    setSelectedNumbers([]);
-  }, [setSelectedNumbers]);
+  }, [user, refreshNumbers]);
 
   useEffect(() => {
     onNumbersSelected(selectedNumbers);
   }, [selectedNumbers, onNumbersSelected]);
 
-  const getNumberStatus = (number: number) => {
-    const numberData = numbers.find(n => n.numero === number);
-    if (!numberData) return 'disponivel';
-    return numberData.status;
+  const handleNumberClick = async (numero: number) => {
+    if (!user) {
+      toast({
+        title: "Login necessário",
+        description: "Você precisa estar logado para selecionar números",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // VALIDAÇÃO DUPLA - Verificar se o número está vendido
+    const numberData = numbers.find(n => n.numero === numero);
+    
+    if (numberData?.status === 'vendido') {
+      console.log('❌ Tentativa de selecionar número vendido:', numero);
+      toast({
+        title: "Número já vendido",
+        description: `O número ${numero.toString().padStart(3, '0')} já foi vendido e não está mais disponível`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Verificar se está em uma lista de números vendidos (extra segurança)
+    const soldNumbers = numbers.filter(n => n.status === 'vendido').map(n => n.numero);
+    if (soldNumbers.includes(numero)) {
+      console.log('❌ Número está na lista de vendidos:', numero);
+      toast({
+        title: "Número indisponível",
+        description: `O número ${numero.toString().padStart(3, '0')} não está disponível para seleção`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (selectedNumbers.includes(numero)) {
+      setSelectedNumbers(selectedNumbers.filter(n => n !== numero));
+      console.log('➖ Número removido da seleção:', numero);
+    } else {
+      if (selectedNumbers.length >= 10) {
+        toast({
+          title: "Limite atingido",
+          description: "Você pode selecionar no máximo 10 números por vez",
+          variant: "destructive"
+        });
+        return;
+      }
+      setSelectedNumbers([...selectedNumbers, numero]);
+      console.log('➕ Número adicionado à seleção:', numero);
+    }
   };
 
-  // Calculate stats
-  const availableCount = Array.from({ length: 130 }, (_, i) => i + 1)
-    .filter(num => getNumberStatus(num) === 'disponivel').length;
+  const selectRandomNumbers = (count: number) => {
+    if (!user) {
+      toast({
+        title: "Login necessário",
+        description: "Você precisa estar logado para selecionar números",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Filtrar apenas números realmente disponíveis
+    const availableNumbers = [];
+    for (let i = 1; i <= 130; i++) {
+      const numberData = numbers.find(n => n.numero === i);
+      // Verificação tripla para garantir que o número está disponível
+      if (numberData?.status !== 'vendido' && 
+          !selectedNumbers.includes(i) && 
+          numberData?.status === 'disponivel') {
+        availableNumbers.push(i);
+      }
+    }
+
+    const remainingSlots = 10 - selectedNumbers.length;
+    const numbersToAdd = Math.min(count, availableNumbers.length, remainingSlots);
+
+    if (numbersToAdd === 0) {
+      toast({
+        title: "Nenhum número disponível",
+        description: "Não há números disponíveis para seleção aleatória",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newNumbers = [...selectedNumbers];
+    for (let i = 0; i < numbersToAdd; i++) {
+      const randomIndex = Math.floor(Math.random() * availableNumbers.length);
+      const number = availableNumbers.splice(randomIndex, 1)[0];
+      newNumbers.push(number);
+    }
+
+    setSelectedNumbers(newNumbers);
+    toast({
+      title: "Números selecionados",
+      description: `${numbersToAdd} números foram selecionados aleatoriamente`,
+    });
+  };
+
+  const handleClearSelection = () => {
+    clearSelectedNumbers();
+    toast({
+      title: "Seleção limpa",
+      description: "Números selecionados foram removidos",
+    });
+  };
+
+  const getNumberStatus = (numero: number) => {
+    const numberData = numbers.find(n => n.numero === numero);
+    
+    if (selectedNumbers.includes(numero)) {
+      return 'selected';
+    }
+    
+    // Verificação mais rigorosa do status vendido
+    if (numberData?.status === 'vendido') {
+      return 'sold';
+    }
+    
+    return 'available';
+  };
+
+  // Calculate stats - garantir que números vendidos sejam contados corretamente
   const soldCount = numbers.filter(n => n.status === 'vendido').length;
+  const availableCount = 130 - soldCount;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-teal-500 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md w-full mx-4">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            Carregando números da rifa...
-          </h2>
-          <p className="text-gray-600">
-            Aguarde um momento.
-          </p>
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 flex items-center justify-center">
+        <div className="text-center bg-white rounded-2xl p-8 shadow-2xl">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg font-semibold">Carregando números...</p>
+          <p className="text-gray-500 text-sm mt-2">Verificando disponibilidade</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-teal-500">
-      {/* Header com Login */}
-      <div className="bg-white/10 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-white">🎲 Rifa Lucky Prize</h1>
-            <p className="text-white/80 text-sm">Escolha seus números da sorte</p>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            {user ? (
-              <div className="flex items-center space-x-3 bg-white/20 rounded-full px-4 py-2">
-                <User className="w-5 h-5 text-white" />
-                <span className="text-white font-medium">
-                  {user.user_metadata?.full_name || user.email}
-                </span>
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  // Trigger auth modal - we'll need to pass this up to parent
-                  const event = new CustomEvent('showAuth');
-                  window.dispatchEvent(event);
-                }}
-                className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-6 py-2 rounded-full font-medium transition-all duration-200 hover:scale-105"
-              >
-                <LogIn className="w-5 h-5" />
-                <span>Entrar</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+  const commonProps = {
+    numbers,
+    selectedNumbers,
+    onNumberClick: handleNumberClick,
+    onSelectRandom: selectRandomNumbers,
+    onClearSelection: handleClearSelection,
+    getNumberStatus,
+    availableCount,
+    soldCount
+  };
 
-      {/* Grid Content */}
-      <div className="pt-6">
-        {isMobile ? (
-          <NumberGridMobile
-            numbers={numbers}
-            selectedNumbers={selectedNumbers}
-            onNumberClick={handleNumberClick}
-            onSelectRandom={handleSelectRandom}
-            onClearSelection={handleClearSelection}
-            getNumberStatus={getNumberStatus}
-            availableCount={availableCount}
-            soldCount={soldCount}
-          />
-        ) : (
-          <NumberGridDesktop
-            numbers={numbers}
-            selectedNumbers={selectedNumbers}
-            onNumberClick={handleNumberClick}
-            onSelectRandom={handleSelectRandom}
-            onClearSelection={handleClearSelection}
-            getNumberStatus={getNumberStatus}
-            availableCount={availableCount}
-            soldCount={soldCount}
-          />
-        )}
-      </div>
-    </div>
-  );
+  if (isMobile) {
+    return <NumberGridMobile {...commonProps} />;
+  }
+
+  return <NumberGridDesktop {...commonProps} />;
 };
 
 export default NumberGrid;
