@@ -38,6 +38,24 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
     }
   }, [selectedNumbers, setSelectedNumbers]);
 
+  const handleSelectRandom = useCallback((count: number) => {
+    const availableNumbers = Array.from({ length: 130 }, (_, i) => i + 1)
+      .filter(num => !selectedNumbers.includes(num) && getNumberStatus(num) === 'disponivel');
+    
+    const randomNumbers = [];
+    const shuffled = [...availableNumbers].sort(() => Math.random() - 0.5);
+    
+    for (let i = 0; i < Math.min(count, shuffled.length); i++) {
+      randomNumbers.push(shuffled[i]);
+    }
+    
+    setSelectedNumbers([...selectedNumbers, ...randomNumbers]);
+  }, [selectedNumbers, setSelectedNumbers]);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedNumbers([]);
+  }, [setSelectedNumbers]);
+
   useEffect(() => {
     onNumbersSelected(selectedNumbers);
   }, [selectedNumbers, onNumbersSelected]);
@@ -47,6 +65,11 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
     if (!numberData) return 'disponivel';
     return numberData.status;
   };
+
+  // Calculate stats
+  const availableCount = Array.from({ length: 130 }, (_, i) => i + 1)
+    .filter(num => getNumberStatus(num) === 'disponivel').length;
+  const soldCount = numbers.filter(n => n.status === 'vendido').length;
 
   if (loading) {
     return (
@@ -106,14 +129,22 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
             numbers={numbers}
             selectedNumbers={selectedNumbers}
             onNumberClick={handleNumberClick}
+            onSelectRandom={handleSelectRandom}
+            onClearSelection={handleClearSelection}
             getNumberStatus={getNumberStatus}
+            availableCount={availableCount}
+            soldCount={soldCount}
           />
         ) : (
           <NumberGridDesktop
             numbers={numbers}
             selectedNumbers={selectedNumbers}
             onNumberClick={handleNumberClick}
+            onSelectRandom={handleSelectRandom}
+            onClearSelection={handleClearSelection}
             getNumberStatus={getNumberStatus}
+            availableCount={availableCount}
+            soldCount={soldCount}
           />
         )}
       </div>
