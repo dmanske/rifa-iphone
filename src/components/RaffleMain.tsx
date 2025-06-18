@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import NumberGrid from './NumberGrid';
 import SimpleCheckout from './SimpleCheckout';
@@ -15,6 +15,16 @@ const RaffleMain: React.FC<RaffleMainProps> = ({ onShowAuth }) => {
   const { user } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>('grid');
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
+
+  // Listen for custom auth event from NumberGrid
+  useEffect(() => {
+    const handleShowAuth = () => {
+      onShowAuth();
+    };
+
+    window.addEventListener('showAuth', handleShowAuth);
+    return () => window.removeEventListener('showAuth', handleShowAuth);
+  }, [onShowAuth]);
 
   const handleNumbersSelected = (numbers: number[]) => {
     setSelectedNumbers(numbers);
