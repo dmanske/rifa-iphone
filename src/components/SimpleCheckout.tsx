@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useNumbers } from '../context/NumbersContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, MessageCircle } from 'lucide-react';
 
 interface SimpleCheckoutProps {
   selectedNumbers: number[];
@@ -72,11 +72,11 @@ const SimpleCheckout: React.FC<SimpleCheckoutProps> = ({
     setLoading(true);
 
     try {
-      // 1. Reservar números
+      // 1. Reservar números SEM tempo de expiração
       const { data: reserveResult, error: reserveError } = await supabase.rpc('reserve_numbers', {
         _user_id: user.id,
         _numeros: selectedNumbers,
-        _minutes_to_expire: 60 // 1 hora para fazer o pagamento
+        _minutes_to_expire: 999999 // Praticamente infinito - só libera com confirmação manual
       });
 
       if (reserveError) {
@@ -112,7 +112,7 @@ const SimpleCheckout: React.FC<SimpleCheckoutProps> = ({
 
       toast({
         title: "Números reservados!",
-        description: `${selectedNumbers.length} números foram reservados. Faça o PIX para confirmar.`,
+        description: `${selectedNumbers.length} números foram reservados. Envie o comprovante no WhatsApp.`,
       });
 
       onSuccess();
@@ -229,6 +229,21 @@ const SimpleCheckout: React.FC<SimpleCheckoutProps> = ({
             </p>
           </div>
 
+          {/* WhatsApp Instructions */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex items-start space-x-3">
+              <MessageCircle className="w-5 h-5 text-blue-600 mt-1" />
+              <div>
+                <h3 className="font-semibold text-blue-900 mb-2">Após o PIX:</h3>
+                <div className="text-sm text-blue-800 space-y-1">
+                  <p>📱 Envie o comprovante no WhatsApp: <strong>{pixKey}</strong></p>
+                  <p>✅ Aguarde nossa confirmação</p>
+                  <p>🎉 Você será adicionado ao grupo da rifa</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Botões */}
           <div className="flex space-x-3 pt-4">
             <button
@@ -250,9 +265,9 @@ const SimpleCheckout: React.FC<SimpleCheckoutProps> = ({
 
         <div className="mt-4 text-center text-sm text-gray-600">
           <p>
-            Após fazer o PIX, seus números ficarão reservados.
+            <strong>Importante:</strong> Seus números ficam reservados até a confirmação do pagamento.
             <br />
-            O organizador confirmará o pagamento em breve.
+            Envie o comprovante no WhatsApp para confirmar rapidamente.
           </p>
         </div>
 

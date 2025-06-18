@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNumbers } from '../context/NumbersContext';
 import { useAuth } from '../hooks/useAuth';
@@ -40,6 +41,12 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
   useEffect(() => {
     onNumbersSelected(selectedNumbers);
   }, [selectedNumbers, onNumbersSelected]);
+
+  const getNumberStatus = (number: number) => {
+    const numberData = numbers.find(n => n.numero === number);
+    if (!numberData) return 'disponivel';
+    return numberData.status;
+  };
 
   if (loading) {
     return (
@@ -99,12 +106,14 @@ const NumberGrid: React.FC<NumberGridProps> = ({ onNumbersSelected }) => {
             numbers={numbers}
             selectedNumbers={selectedNumbers}
             onNumberClick={handleNumberClick}
+            getNumberStatus={getNumberStatus}
           />
         ) : (
           <NumberGridDesktop
             numbers={numbers}
             selectedNumbers={selectedNumbers}
             onNumberClick={handleNumberClick}
+            getNumberStatus={getNumberStatus}
           />
         )}
       </div>
